@@ -1,0 +1,62 @@
+{
+  "startedAt": "2026-06-13T09:24:37.522Z",
+  "durationSec": 93,
+  "profile": {
+    "name": "A B C dot D E F",
+    "age": "32"
+  },
+  "capturedDetails": [],
+  "contactsShared": [],
+  "transcript": [
+    {
+      "who": "Rupa Devi",
+      "text": "Namaste, my name is Rupa Devi, calling from the I-C-C-C, Uttar Pradesh. Welcome to Gyarah Das. We support mothers through pregnancy until the child turns two. May I take a few details to support you and connect you with health and nutrition services?",
+      "t": 4801
+    },
+    {
+      "who": "Mother",
+      "text": "Yes.",
+      "t": 21451
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you. Could you please tell me your full name?",
+      "t": 21469
+    },
+    {
+      "who": "Mother",
+      "text": "abc.def",
+      "t": 51721
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you for sharing that. I'll note down your name as A B C dot D E F. Now, could you tell me your age, please?",
+      "t": 51788
+    },
+    {
+      "who": "Mother",
+      "text": "32",
+      "t": 62221
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Got it, thank you. Could you share your mobile number now, please?",
+      "t": 62291
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "No problem, we can come back to that later if needed. Could you tell me which village you live in?",
+      "t": 80336
+    },
+    {
+      "who": "Mother",
+      "text": "Bye.",
+      "t": 87356
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "It’s okay, take your time. You can share whenever you're ready. Could you tell me the name of your village?",
+      "t": 88172
+    }
+  ]
+}

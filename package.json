@@ -1,0 +1,13 @@
+{
+  "name": "gyarah-das-voice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gyarah Das — voice-based onboarding companion (OpenAI Realtime).",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gyarah Das — Onboarding (Rupa Devi)</title>
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --accent: #b5651d;      /* warm terracotta */
+    --accent-dark: #8c4a12;
+    --agent: #2e7d5b;       /* warm green */
+    --user: #3a4a6b;
+    --muted: #7a7368;
+    --line: #ece5da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: #2b2620;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  .app {
+    width: 100%;
+    max-width: 560px;
+    padding: 20px 18px 40px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 26px;
+    color: var(--accent-dark);
+    letter-spacing: .3px;
+  }
+  header .sub {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .status {
+    text-align: center;
+    font-size: 15px;
+    min-height: 24px;
+    margin: 10px 0 16px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .status.listening { color: var(--accent); }
+  .status.speaking  { color: var(--agent); }
+
+  .mic {
+    display: block;
+    margin: 0 auto 18px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(181,101,29,.35);
+    transition: transform .15s, background .2s;
+  }
+  .mic:active { transform: scale(.96); }
+  .mic:disabled { opacity: .55; cursor: default; }
+  .mic.live {
+    background: #c62828;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(198,40,40,.45); }
+    70%  { box-shadow: 0 0 0 18px rgba(198,40,40,0); }
+    100% { box-shadow: 0 0 0 0 rgba(198,40,40,0); }
+  }
+
+  .transcript {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    min-height: 160px;
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+  .msg { margin: 10px 0; line-height: 1.4; font-size: 16px; }
+  .msg .who { font-weight: 700; font-size: 13px; display: block; margin-bottom: 2px; }
+  .msg.agent .who { color: var(--agent); }
+  .msg.user  .who { color: var(--user); }
+  .msg.user  { text-align: right; }
+  .msg.user.interim { opacity: .55; font-style: italic; }
+
+  .profile {
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .profile h3 { margin: 0 0 8px; font-size: 14px; color: var(--accent-dark); text-transform: uppercase; letter-spacing: .5px; }
+  .profile .row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+  .profile .row:last-child { border-bottom: none; }
+  .profile .label { color: var(--muted); }
+  .profile .val { font-weight: 700; }
+  .profile .val.empty { color: #c9c1b5; font-weight: 400; }
+
+  .net {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .controls { text-align: center; margin-top: 14px; }
+  .btn-secondary {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-record {
+    background: #c62828; border: none; color: #fff;
+    padding: 9px 18px; border-radius: 20px; font-size: 13px;
+    font-weight: 700; cursor: pointer; margin-right: 6px;
+  }
+  .btn-record:disabled { opacity: .5; cursor: default; }
+  .dbg { margin-top: 8px; font-size: 12px; color: #8a8378; font-family: ui-monospace, monospace;
+         text-align: center; min-height: 16px; word-break: break-word; }
+  .rec-dot { text-align: center; margin-top: 10px; font-size: 13px;
+             font-weight: 700; color: #c62828; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .hint { font-size: 12px; color: #b3aa9c; text-align: center; margin-top: 18px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Gyarah Das</h1>
+    <div class="sub">Voice companion for the first 1000 days &middot; with Rupa Devi</div>
+  </header>
+
+  <div id="status" class="status">Tap the circle to begin</div>
+
+  <button id="mic" class="mic">Start</button>
+
+  <div id="transcript" class="transcript"></div>
+  <div id="dbg" class="dbg">🔎 idle</div>
+
+  <div class="profile">
+    <h3>Beneficiary Profile</h3>
+    <div class="row"><span class="label">Name</span><span id="p-name" class="val empty">—</span></div>
+    <div class="row"><span class="label">Age</span><span id="p-age" class="val empty">—</span></div>
+    <div class="row"><span class="label">Mobile</span><span id="p-mobile" class="val empty">—</span></div>
+    <div class="row"><span class="label">Village</span><span id="p-village" class="val empty">—</span></div>
+    <div id="net" class="net"></div>
+  </div>
+
+  <div class="controls">
+    <button id="record" class="btn-record">● Record &amp; Run</button>
+    <button id="stop" class="btn-secondary" disabled>Stop &amp; Save</button>
+    <button id="restart" class="btn-secondary">Restart</button>
+  </div>
+  <div id="recDot" class="rec-dot" style="display:none">● Recording — speak your answers aloud</div>
+
+  <div class="hint">
+    Works best in Google Chrome with microphone access allowed.<br>
+    <b>Use headphones</b> so the app does not hear its own voice.<br>
+    After each question the circle turns red — then just speak; it waits until you pause.
+  </div>
+</div>
+
+<script>
+/* ----------------------------------------------------------------------------
+   Gyarah Das — Onboarding (Step 1)
+   Real two-way voice, English, happy path. No backend.
+   Uses the browser Web Speech API (SpeechSynthesis + SpeechRecognition).
+---------------------------------------------------------------------------- */
+
+// --- Safety Net Directory (from the Knowledge Base) -------------------------
+const SAFETY_NET = {
+  anwa: {
+    village: "Anwa",
+    ASHA:  { name: "Rinku Devi",        mobile: "7037470202" },
+    AWW:   { name: "Manju Devi",        mobile: "7624809705" },
+    ANM:   { name: "Rani Devi",         mobile: "9396995185" },
+    gramSathi: { name: "Suraj Kumar",   mobile: "9812067080" },
+    shg:   { name: "Reena Kumari",      mobile: "9163192998" },
+    transport: { name: "Krishna Kumar Yadav", mobile: "9772499581" },
+    facilities: {
+      PHC: { name: "PHC Saifni",            distance: "8-12 km",  time: "15-25 min" },
+      CHC: { name: "CHC Shahabad",          distance: "14-18 km", time: "25-35 min" },
+      DH:  { name: "District Hospital Rampur", distance: "35-40 km", time: "60-75 min" }
+    }
+  }
+};
+
+// --- DOM refs ----------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const micBtn    = $("mic");
+const statusEl  = $("status");
+const transcript= $("transcript");
+const restartBtn= $("restart");
+
+// --- Captured profile --------------------------------------------------------
+const profile = { name: "", age: "", mobile: "", village: "", mapping: null };
+
+// --- Speech setup ------------------------------------------------------------
+const synth = window.speechSynthesis;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let running = false;
+
+if (!SR) {
+  statusEl.textContent = "Voice input not supported — please use Google Chrome.";
+}
+
+function pickVoice() {
+  const voices = synth.getVoices();
+  // Prefer a clear English female voice if available
+  return voices.find(v => /en(-|_)?(IN|GB|US)/i.test(v.lang) && /female|woman|samantha|google uk english female|aria|zira/i.test(v.name))
+      || voices.find(v => /en(-|_)?IN/i.test(v.lang))
+      || voices.find(v => /^en/i.test(v.lang))
+      || voices[0];
+}
+
+// Speak a line; resolves when finished (with a watchdog in case Chrome's
+// speechSynthesis forgets to fire onend on longer lines).
+function speak(text) {
+  return new Promise((resolve) => {
+    addMsg("Rupa Devi", text, "agent");
+    setStatus("Rupa Devi is speaking…", "speaking");
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice();
+    if (v) u.voice = v;
+    u.rate = 0.95;
+    u.pitch = 1.05;
+    let done = false;
+    const finish = () => { if (done) return; done = true; clearTimeout(wd); resolve(); };
+    const wd = setTimeout(finish, Math.min(20000, 1800 + text.length * 75));
+    u.onend = finish;
+    u.onerror = finish;
+    synth.cancel();
+    synth.speak(u);
+  });
+}
+
+// --- Turn-taking timing -----------------------------------------------------
+const PAUSE_MS   = 3500;     // user silence after speaking → the answer is finished
+const OVERALL_MS = 30000;    // keep the mic open up to this long while waiting
+
+const settle = (ms) => new Promise(r => setTimeout(r, ms));
+const FATAL_MIC = new Set(["not-allowed", "service-not-allowed", "audio-capture"]);
+
+let liveBubble = null; // live on-screen bubble of what is being heard
+
+// Listen for ONE answer. Resolves { text, fatal }.
+// It waits patiently and AUTO-RESTARTS on "no-speech", so it never gives up
+// early or races ahead. An answer ends 3.5s after the user stops talking.
+function listenOnce() {
+  return new Promise((resolve) => {
+    if (!SR) { resolve({ text: "", fatal: false }); return; }
+    let rec, finalText = "", interimText = "", started = false, done = false;
+    let silenceTimer = null, overallTimer = null, restarting = false;
+    let netStrikes = 0, restarts = 0;
+    const startTs = Date.now();
+
+    liveBubble = null;
+    setMicLive(true);
+    setStatus("Listening… you can answer now", "listening");
+    dbg("listening started");
+
+    const finish = (fatal) => {
+      if (done) return; done = true;
+      clearTimeout(silenceTimer); clearTimeout(overallTimer);
+      try { rec && rec.abort(); } catch (_) {}
+      setMicLive(false);
+      const said = (finalText + " " + interimText).trim();
+      if (liveBubble) {
+        if (said) { liveBubble.classList.remove("interim");
+          liveBubble.innerHTML = `<span class="who">You</span>${escapeHtml(said)}`; }
+        else liveBubble.remove();
+        liveBubble = null;
+      } else if (said) addMsg("You", said, "user");
+      resolve({ text: said, fatal: !!fatal });
+    };
+
+    // Restart the 3.5s "are you finished?" countdown every time speech arrives
+    const armSilence = () => {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => finish(false), PAUSE_MS);
+    };
+
+    const timeLeft  = () => (OVERALL_MS - (Date.now() - startTs)) > 1000;
+    const restartSoon = () => {
+      if (done || restarting) return; restarting = true;
+      setTimeout(() => { restarting = false; if (!done) makeRec(); }, 250);
+    };
+
+    function makeRec() {
+      rec = new SR(); recognition = rec;
+      rec.lang = "en-IN"; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
+      rec.onstart = () => dbg("mic open — speak now");
+      rec.onaudiostart = () => dbg("receiving audio…");
+      rec.onspeechstart = () => dbg("speech detected");
+      rec.onresult = (e) => {
+        if (!started) started = true;
+        finalText = ""; interimText = "";
+        for (let i = 0; i < e.results.length; i++) {
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += t + " "; else interimText += t;
+        }
+        dbg("heard: " + (finalText + interimText).trim());
+        showInterim((finalText + " " + interimText).trim());
+        armSilence();
+      };
+      rec.onerror = (ev) => {
+        dbg("recognizer error: " + ev.error);
+        if (FATAL_MIC.has(ev.error)) {                       // mic blocked / busy → stop, show why
+          setStatus("Microphone problem: " + ev.error + " — allow mic / close other apps using it.", "error");
+          return finish(true);
+        }
+        if (ev.error === "network") {                        // no internet to the speech service
+          if (++netStrikes >= 3) {
+            setStatus("Speech service unreachable — check your internet connection.", "error");
+            return finish(false);
+          }
+        }
+        if (!started && timeLeft()) restartSoon();           // no-speech / aborted → keep waiting
+        else if (!done && !started) finish(false);
+      };
+      rec.onend = () => {
+        dbg("recognizer closed (restart #" + restarts + ")");
+        if (done) return;
+        if (started) finish(false);            // got speech and recogniser closed → take it
+        else if (timeLeft()) restartSoon();    // nothing yet → keep the mic open
+        else finish(false);
+      };
+      try { rec.start(); restarts++; } catch (_) { if (!started && timeLeft()) restartSoon(); else finish(false); }
+    }
+
+    overallTimer = setTimeout(() => finish(false), OVERALL_MS);
+    makeRec();
+  });
+}
+
+// Live "You: …" bubble that updates as the user speaks
+function showInterim(text) {
+  if (!text) return;
+  if (!liveBubble) {
+    liveBubble = document.createElement("div");
+    liveBubble.className = "msg user interim";
+    transcript.appendChild(liveBubble);
+  }
+  liveBubble.innerHTML = `<span class="who">You</span>${escapeHtml(text)}…`;
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function micError() {
+  setStatus("Microphone unavailable — allow mic access and close other apps using it.", "error");
+}
+
+// Live diagnostic readout, so we can see exactly what the recognizer is doing
+function dbg(msg) {
+  console.log("[speech]", msg);
+  const el = $("dbg");
+  if (el) el.textContent = "🔎 " + msg;
+}
+
+// Soft "your turn" cue, said right after each question
+let cueIndex = 0;
+const CUES = [
+  "Okay, you can answer now.",
+  "Please go ahead, I am listening.",
+  "You can tell me now, take your time."
+];
+const nextCue = () => CUES[cueIndex++ % CUES.length];
+
+// Ask an OPEN question. Keeps waiting / re-prompting until there is an answer —
+// it never skips ahead on silence.
+async function ask(question) {
+  await speak(question);
+  await speak(nextCue());
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await settle(300);                 // let the audio settle before we listen
+    const { text, fatal } = await listenOnce();
+    if (fatal) { micError(); throw new Error("mic-fatal"); }
+    if (text) return text;
+    await speak("I did not catch that. You can answer now, take your time.");
+  }
+  return "";
+}
+
+// Ask a YES / NO question and return "yes" or "no".
+function parseYesNo(t) {
+  const s = " " + t.toLowerCase().replace(/[^a-z\s]/g, " ") + " ";
+  if (/\s(no|nope|nah|nahi|na|stop|cancel|later|busy|not now|not interested)\s/.test(s)) return "no";
+  if (/\s(yes|yeah|yep|yup|sure|ok|okay|haan|han|ha|fine|please|go ahead)\s/.test(s)) return "yes";
+  return null;
+}
+async function askYesNo(question) {
+  await speak(question);
+  await speak("Please say yes or no — you can answer now.");
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await settle(300);
+    const { text, fatal } = await listenOnce();
+    if (fatal) { micError(); throw new Error("mic-fatal"); }
+    const yn = parseYesNo(text);
+    if (yn) return yn;
+    await speak(text ? "Sorry, please say just yes or no." : "You can answer now — please say yes or no.");
+  }
+  return "no";   // safe default
+}
+
+// --- Helpers -----------------------------------------------------------------
+function addMsg(who, text, cls) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerHTML = `<span class="who">${who}</span>${escapeHtml(text)}`;
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function setStatus(t, cls){ statusEl.textContent = t; statusEl.className = "status" + (cls ? " " + cls : ""); }
+function setMicLive(on){ micBtn.classList.toggle("live", on); micBtn.textContent = on ? "Listening" : "…"; }
+
+function setProfileField(key, value) {
+  const el = $("p-" + key);
+  el.textContent = value;
+  el.classList.remove("empty");
+}
+
+// Pull digits out of spoken numbers ("nine seven seven..." or "97724...")
+function extractDigits(text) {
+  const words = { zero:'0',one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',seven:'7',eight:'8',nine:'9',
+                  oh:'0','o':'0',double:'',triple:'' };
+  let out = "";
+  text.toLowerCase().split(/[\s-]+/).forEach(w => {
+    if (/^\d+$/.test(w)) out += w;
+    else if (words[w] !== undefined) out += words[w];
+  });
+  return out;
+}
+
+function lookupVillage(spoken) {
+  const norm = spoken.toLowerCase().replace(/[^a-z]/g, "");
+  for (const key in SAFETY_NET) {
+    if (norm.includes(key)) return SAFETY_NET[key];
+  }
+  return null; // happy path: directory only has Anwa
+}
+
+// --- The onboarding conversation --------------------------------------------
+async function runOnboarding() {
+  // STEP 1: GREETING
+  await speak("Namaste. My name is Rupa Devi, calling from the I C C C, Uttar Pradesh.");
+  await speak("Welcome to Gyarah Das. We support mothers through pregnancy and until the child is two years old.");
+
+  // STEP 2: CONSENT — really wait for yes / no, and branch on the answer.
+  const consent = await askYesNo("May I take a few details so that I can support you and connect you with health and nutrition services?");
+  if (consent === "no") {
+    await speak("That is completely alright. Thank you for your time. You can call back any time. Take care. Namaste.");
+    return finishConversation();
+  }
+  await speak("Thank you.");
+
+  // STEP 3: BENEFICIARY PROFILE
+  const name = await ask("May I know your full name?");
+  if (name) { profile.name = name; setProfileField("name", name); }
+  await speak("Thank you, " + (name ? firstName(name) + ", " : "") + "it is nice to meet you.");
+
+  const ageRaw = await ask("How old are you?");
+  if (ageRaw) { const a = extractDigits(ageRaw) || ageRaw; profile.age = a; setProfileField("age", a); }
+  await speak("Thank you for sharing that.");
+
+  const mobileRaw = await ask("What is your mobile number? Please say it digit by digit.");
+  if (mobileRaw) { const m = extractDigits(mobileRaw) || mobileRaw; profile.mobile = m; setProfileField("mobile", m); }
+  await speak("Got it, thank you.");
+
+  const village = await ask("Which village do you live in?");
+  if (village) {
+    profile.village = village;
+    const mapping = lookupVillage(village);
+    profile.mapping = mapping;
+    setProfileField("village", mapping ? mapping.village : village);
+    if (mapping) {
+      // Per the rules: store mapping silently, do NOT read out the stakeholders now.
+      $("net").textContent =
+        "✓ Local support system mapped silently for " + mapping.village +
+        " (ASHA, ANM, Anganwadi, PHC, CHC, transport). Stored for later.";
+    }
+  }
+
+  // CLOSE-OUT
+  await speak("Thank you. I have noted your details. I am here to support you through your pregnancy and your child's first one thousand days. We will talk again soon. Take care. Namaste.");
+  return finishConversation();
+}
+
+// Wrap up the call and, if recording, let the last line finish then save.
+async function finishConversation() {
+  setStatus("Onboarding complete ✓", "");
+  micBtn.disabled = true;
+  micBtn.textContent = "Done";
+  if (recActive) {
+    setStatus("Onboarding complete ✓ — saving recording…", "");
+    await settle(1500);
+    stopRecording();
+  }
+}
+
+function firstName(full){ return full.trim().split(/\s+/)[0]; }
+
+// --- Screen + voice recording (saves an MP4 to Downloads) -------------------
+const recordBtn = $("record"), stopBtn = $("stop"), recDot = $("recDot");
+let mediaRecorder = null, recChunks = [], recStream = null, recAudioCtx = null,
+    recSources = [], recActive = false;
+
+function pickRecMime() {
+  const prefs = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1,mp4a",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm"
+  ];
+  for (const m of prefs) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return "";
+}
+
+async function startRecording() {
+  // 1) Screen video + system audio (Rupa Devi's voice). User picks the screen
+  //    and ticks "Share system audio" in the browser dialog.
+  const display = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: 30 }, audio: true
+  });
+  // 2) Your microphone (your spoken answers).
+  let mic = null;
+  try { mic = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (_) {}
+
+  // 3) Mix both audio sources into a single track via Web Audio.
+  recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const dest = recAudioCtx.createMediaStreamDestination();
+  if (display.getAudioTracks().length)
+    recAudioCtx.createMediaStreamSource(new MediaStream(display.getAudioTracks())).connect(dest);
+  if (mic && mic.getAudioTracks().length)
+    recAudioCtx.createMediaStreamSource(mic).connect(dest);
+
+  recSources = [display, mic].filter(Boolean);
+  recStream = new MediaStream([ display.getVideoTracks()[0], ...dest.stream.getAudioTracks() ]);
+
+  const mime = pickRecMime();
+  recChunks = [];
+  mediaRecorder = new MediaRecorder(recStream, mime ? { mimeType: mime } : undefined);
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.push(e.data); };
+  mediaRecorder.onstop = () => saveRecording(mediaRecorder.mimeType || mime);
+  mediaRecorder.start(1000);
+  recActive = true;
+
+  recDot.style.display = "block";
+  stopBtn.disabled = false;
+  recordBtn.disabled = true;
+
+  // If the user clicks the browser's "Stop sharing", finalize too.
+  display.getVideoTracks()[0].addEventListener("ended", () => stopRecording());
+}
+
+function saveRecording(mime) {
+  const isMp4 = /mp4/i.test(mime || "");
+  const ext = isMp4 ? "mp4" : "webm";
+  const blob = new Blob(recChunks, { type: mime || (isMp4 ? "video/mp4" : "video/webm") });
+  const url = URL.createObjectURL(blob);
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const a = document.createElement("a");
+  a.href = url; a.download = `gyarah-das-onboarding-${ts}.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  recDot.style.display = "none";
+  setStatus(`Recording saved to Downloads (${ext.toUpperCase()}).`, "");
+}
+
+function stopRecording() {
+  if (!recActive) return;
+  recActive = false;
+  try { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch (_) {}
+  try { recSources.forEach(s => s.getTracks().forEach(t => t.stop())); } catch (_) {}
+  try { if (recAudioCtx) recAudioCtx.close(); } catch (_) {}
+  stopBtn.disabled = true;
+}
+
+// --- Wiring ------------------------------------------------------------------
+async function start() {
+  if (running) return;
+  running = true;
+  micBtn.classList.remove("live");
+  // warm up voices (some browsers load them lazily)
+  if (synth.getVoices().length === 0) {
+    await new Promise(r => { synth.onvoiceschanged = r; setTimeout(r, 400); });
+  }
+  micBtn.textContent = "…";
+  try {
+    await runOnboarding();
+  } catch (e) {
+    console.error(e);
+    if (e.message !== "mic-fatal") setStatus("Something went wrong. Please tap Restart.", "");
+    if (recActive) stopRecording();
+  }
+}
+
+micBtn.addEventListener("click", start);
+
+// Record & Run: start the screen+voice recording, then begin the conversation.
+recordBtn.addEventListener("click", async () => {
+  try {
+    setStatus("Starting recording — choose your screen and share audio…", "");
+    await startRecording();
+    setStatus("Recording started. Beginning conversation…", "");
+    await start();
+  } catch (e) {
+    console.error(e);
+    recDot.style.display = "none";
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus("Could not start recording (permission denied or cancelled).", "");
+  }
+});
+
+stopBtn.addEventListener("click", () => {
+  synth.cancel();
+  if (recognition) try { recognition.abort(); } catch(_) {}
+  stopRecording();
+});
+
+restartBtn.addEventListener("click", () => {
+  synth.cancel();
+  if (recognition) try { recognition.abort(); } catch(_) {}
+  stopRecording();
+  location.reload();
+});
+</script>
+</body>
+</html>

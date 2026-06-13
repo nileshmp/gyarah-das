@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mic & Speech Diagnostic</title>
+<style>
+  body { font-family: system-ui, "Segoe UI", sans-serif; max-width: 680px; margin: 0 auto;
+         padding: 24px; background: #faf7f2; color: #2b2620; }
+  h1 { font-size: 22px; }
+  button { font-size: 16px; padding: 12px 20px; border-radius: 10px; border: none;
+           background: #b5651d; color: #fff; font-weight: 700; cursor: pointer; margin: 6px 6px 6px 0; }
+  .env { background: #fff; border: 1px solid #e6ddd0; border-radius: 10px; padding: 14px; margin: 14px 0; }
+  .env div { padding: 3px 0; font-size: 15px; }
+  .ok { color: #2e7d5b; font-weight: 700; }
+  .bad { color: #c62828; font-weight: 700; }
+  #log { background: #1e1b16; color: #e8e2d6; font-family: ui-monospace, monospace;
+         font-size: 14px; padding: 14px; border-radius: 10px; min-height: 220px;
+         white-space: pre-wrap; margin-top: 14px; }
+  .big { font-size: 18px; font-weight: 700; }
+</style>
+</head>
+<body>
+  <h1>🔎 Microphone &amp; Speech Diagnostic</h1>
+  <p>Open this in <b>real Google Chrome</b> (not the in-app preview). Then click the buttons in order.</p>
+
+  <div class="env" id="env">Checking environment…</div>
+
+  <button id="btnMic">1) Test microphone access</button>
+  <button id="btnSpeech">2) Test speech recognition (then speak)</button>
+  <button id="btnStop">Stop</button>
+
+  <div id="log"></div>
+
+<script>
+const logEl = document.getElementById("log");
+function log(msg, cls) {
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += `[${t}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log("[diag]", msg);
+}
+
+// --- Environment report -----------------------------------------------------
+(function envReport() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rows = [
+    ["Secure context (https/localhost/file)", window.isSecureContext],
+    ["Online (internet reachable)", navigator.onLine],
+    ["SpeechRecognition API present", !!SR],
+    ["getUserMedia (mic) API present", !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)],
+    ["Browser is Chrome", /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent)],
+  ];
+  const env = document.getElementById("env");
+  env.innerHTML = rows.map(([label, ok]) =>
+    `<div>${label}: <span class="${ok ? "ok" : "bad"}">${ok ? "YES" : "NO"}</span></div>`).join("")
+    + `<div style="margin-top:6px;color:#7a7368;font-size:12px">${navigator.userAgent}</div>`;
+})();
+
+// --- 1) Microphone access test ----------------------------------------------
+document.getElementById("btnMic").onclick = async () => {
+  log("Requesting microphone access…");
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const tracks = stream.getAudioTracks();
+    log("✅ MIC OK — got " + tracks.length + " audio track(s):", "ok");
+    tracks.forEach(t => log("   • " + (t.label || "(unnamed device)") + " — enabled=" + t.enabled + ", muted=" + t.muted));
+    // Show live input level so you can SEE if the mic hears you
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    const an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an);
+    const buf = new Uint8Array(an.frequencyBinCount);
+    log("Speak now — watching input level for 6 seconds…");
+    let peak = 0, ticks = 0;
+    const iv = setInterval(() => {
+      an.getByteTimeDomainData(buf);
+      let max = 0; for (const v of buf) max = Math.max(max, Math.abs(v - 128));
+      peak = Math.max(peak, max);
+      if (++ticks % 5 === 0) log("   level: " + "█".repeat(Math.round(max / 4)) + " (" + max + ")");
+      if (ticks > 60) {
+        clearInterval(iv);
+        log(peak > 6 ? "✅ Microphone IS picking up sound (peak " + peak + ")." : "❌ NO sound detected — mic is silent/muted (peak " + peak + ").", peak > 6 ? "ok" : "bad");
+        stream.getTracks().forEach(t => t.stop()); ctx.close();
+      }
+    }, 100);
+  } catch (e) {
+    log("❌ MIC FAILED: " + e.name + " — " + e.message, "bad");
+  }
+};
+
+// --- 2) Speech recognition test ---------------------------------------------
+let rec = null;
+document.getElementById("btnSpeech").onclick = () => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { log("❌ SpeechRecognition not available in this browser.", "bad"); return; }
+  rec = new SR();
+  rec.lang = "en-IN"; rec.interimResults = true; rec.continuous = true;
+  rec.onstart       = () => log("→ onstart (recognition session opened)");
+  rec.onaudiostart  = () => log("→ onaudiostart (mic audio flowing to recognizer)");
+  rec.onsoundstart  = () => log("→ onsoundstart (some sound heard)");
+  rec.onspeechstart = () => log("→ onspeechstart (speech detected)");
+  rec.onresult = (e) => {
+    let txt = "";
+    for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    log("✅ HEARD: \"" + txt.trim() + "\"", "ok");
+  };
+  rec.onerror = (e) => log("❌ onerror: " + e.error, "bad");
+  rec.onend   = () => log("→ onend (session closed)");
+  try { rec.start(); log("Started recognition — SPEAK NOW."); }
+  catch (e) { log("❌ start() threw: " + e.message, "bad"); }
+};
+
+document.getElementById("btnStop").onclick = () => { try { rec && rec.stop(); } catch (_) {} log("Stopped."); };
+</script>
+</body>
+</html>

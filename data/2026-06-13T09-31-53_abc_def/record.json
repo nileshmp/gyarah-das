@@ -1,0 +1,156 @@
+{
+  "startedAt": "2026-06-13T09:31:53.318Z",
+  "durationSec": 162,
+  "profile": {
+    "age": "32",
+    "name": "ABC.DEF",
+    "mobile": "984576761",
+    "village": "Ayodhya"
+  },
+  "capturedDetails": [
+    {
+      "section": "Pregnancy",
+      "label": "Current stage",
+      "value": "Second trimester (about 4 months)",
+      "t": 97147
+    }
+  ],
+  "contactsShared": [],
+  "transcript": [
+    {
+      "who": "Rupa Devi",
+      "text": "Namaste, my name is Rupa Devi, calling from the I-C-C-C, Uttar Pradesh. Welcome to Gyarah Das. We support mothers through pregnancy until the child turns two. May I take a few details to help you and connect you with health and nutrition services?",
+      "t": 5413
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you. Could you please tell me your full name?",
+      "t": 21840
+    },
+    {
+      "who": "Mother",
+      "text": "Yes",
+      "t": 22805
+    },
+    {
+      "who": "Mother",
+      "text": "abc.def",
+      "t": 27426
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you for sharing. I'll note down the name as ABC.DEF. Now, could you tell me your age?",
+      "t": 28492
+    },
+    {
+      "who": "Mother",
+      "text": "32",
+      "t": 36116
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Got it, your age is 32. Thank you. Now, could you share your mobile number, please?",
+      "t": 37352
+    },
+    {
+      "who": "Mother",
+      "text": "9 8 4 5 7 6 7 6 1",
+      "t": 47075
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you for sharing that. Now, could you tell me the name of your village?",
+      "t": 48398
+    },
+    {
+      "who": "Mother",
+      "text": "Ayod ya.",
+      "t": 54144
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Thank you. I couldn’t find the local support details for Ayodhya right now, but we’ll continue. Are you currently pregnant?",
+      "t": 56960
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Congratulations!",
+      "t": 64704
+    },
+    {
+      "who": "Mother",
+      "text": "Yes.",
+      "t": 64838
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Do you remember the first day of your last monthly period before the pregnancy?",
+      "t": 66765
+    },
+    {
+      "who": "Mother",
+      "text": "No, I'm not sure",
+      "t": 73419
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "That’s okay. Has a doctor, ANM, ASHA, or an ultrasound told you how many months pregnant you are?",
+      "t": 74562
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "I'm here. Do you know how many months pregnant you",
+      "t": 88098
+    },
+    {
+      "who": "Mother",
+      "text": "Hello?",
+      "t": 88373
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "That's helpful. Could you tell me how many months along they said you are?",
+      "t": 90324
+    },
+    {
+      "who": "Mother",
+      "text": "Either way.",
+      "t": 90910
+    },
+    {
+      "who": "Mother",
+      "text": "around four",
+      "t": 97074
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "You’re in the second trimester, around 4 months. Let’s now talk about your local support team. Once we finish, I’ll guide you with the right care for this stage.",
+      "t": 99630
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "I understand, and I’m here to help. Even",
+      "t": 116493
+    },
+    {
+      "who": "Mother",
+      "text": "اوكي عشانا عشانا",
+      "t": 117290
+    },
+    {
+      "who": "Mother",
+      "text": "好",
+      "t": 118321
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Right now, I don't have the names for your local ASHA, Anganwadi worker, or ANM. But remember, your ASHA is your first point of contact for registration and home visits. The Anganwadi worker helps with nutrition and Take Home Ration. The ANM handles pregnancy check-ups and immunizations. And for health services, there will be a nearby PHC, CHC, and District Hospital. You can always ask for any contact details if needed. You are not alone—we’re here to support you. \n\nNow, I’ll guide you on the right care for your stage and stay in touch. Take care.",
+      "t": 124238
+    },
+    {
+      "who": "Mother",
+      "text": "Okay.",
+      "t": 159055
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-06-13T09:31:12.267Z",
+  "durationSec": 17,
+  "profile": {},
+  "capturedDetails": [],
+  "contactsShared": [],
+  "transcript": [
+    {
+      "who": "Mother",
+      "text": "Bye.",
+      "t": 2822
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Namaste, my name is Rupa Devi, calling from the I-C-C-C, Uttar Pradesh. Welcome to Gyarah Das. We are here to support mothers through pregnancy until the child turns two. May I kindly ask if I can take a few details to support you and connect you with health and nutrition services?",
+      "t": 6076
+    },
+    {
+      "who": "Rupa Devi",
+      "text": "Of course, thank you for letting me know. You’re welcome to call back anytime. Take care.",
+      "t": 12956
+    },
+    {
+      "who": "Mother",
+      "text": "Chris, hello. I'll give you a call.",
+      "t": 13114
+    }
+  ]
+}

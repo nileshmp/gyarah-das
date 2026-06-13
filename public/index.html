@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gyarah Das — Rupa Devi (Realtime)</title>
+<style>
+  :root {
+    --bg:#faf7f2; --card:#fff; --accent:#b5651d; --accent-dark:#8c4a12;
+    --agent:#2e7d5b; --user:#3a4a6b; --muted:#7a7368; --line:#ece5da;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg);
+         color:#2b2620; min-height:100vh; display:flex; justify-content:center; }
+  .app { width:100%; max-width:560px; padding:20px 18px 40px; }
+  header { text-align:center; margin-bottom:14px; }
+  header h1 { margin:0; font-size:26px; color:var(--accent-dark); }
+  header .sub { margin-top:4px; font-size:14px; color:var(--muted); }
+  .status { text-align:center; font-size:15px; min-height:24px; margin:10px 0 16px;
+            color:var(--muted); font-weight:600; }
+  .status.listening { color:var(--accent); }
+  .status.speaking  { color:var(--agent); }
+  .status.error     { color:#c62828; }
+
+  .mic { display:block; margin:0 auto 18px; width:120px; height:120px; border-radius:50%;
+         border:none; background:var(--accent); color:#fff; font-size:16px; font-weight:700;
+         cursor:pointer; box-shadow:0 6px 18px rgba(181,101,29,.35);
+         transition:transform .15s,background .2s; }
+  .mic:active { transform:scale(.96); }
+  .mic:disabled { opacity:.55; cursor:default; }
+  .mic.live { background:#c62828; animation:pulse 1.4s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(198,40,40,.45);} 70%{box-shadow:0 0 0 18px rgba(198,40,40,0);} 100%{box-shadow:0 0 0 0 rgba(198,40,40,0);} }
+
+  .transcript { background:var(--card); border:1px solid var(--line); border-radius:14px;
+                padding:14px; min-height:150px; max-height:40vh; overflow-y:auto; }
+  .msg { margin:10px 0; line-height:1.4; font-size:16px; }
+  .msg .who { font-weight:700; font-size:13px; display:block; margin-bottom:2px; }
+  .msg.agent .who { color:var(--agent); }
+  .msg.user  .who { color:var(--user); }
+  .msg.user  { text-align:right; }
+  .msg.user.interim, .msg.agent.interim { opacity:.6; }
+
+  .card { margin-top:16px; background:var(--card); border:1px solid var(--line);
+          border-radius:14px; padding:14px 16px; }
+  .card h3 { margin:0 0 8px; font-size:14px; color:var(--accent-dark);
+             text-transform:uppercase; letter-spacing:.5px; }
+  .row { display:flex; justify-content:space-between; padding:5px 0;
+         border-bottom:1px dashed var(--line); font-size:15px; gap:12px; }
+  .row:last-child { border-bottom:none; }
+  .label { color:var(--muted); }
+  .val { font-weight:700; text-align:right; }
+  .val.empty { color:#c9c1b5; font-weight:400; }
+  .sec { font-size:12px; color:var(--accent); font-weight:700; text-transform:uppercase;
+         letter-spacing:.4px; margin:10px 0 2px; }
+  .net { margin-top:8px; font-size:13px; color:var(--muted); font-style:italic; }
+  .muted-empty { color:#c9c1b5; font-size:14px; }
+
+  .controls { text-align:center; margin-top:14px; }
+  .btn { background:none; border:1px solid var(--line); color:var(--muted);
+         padding:8px 16px; border-radius:20px; font-size:13px; cursor:pointer; }
+  .hint { font-size:12px; color:#b3aa9c; text-align:center; margin-top:18px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Gyarah Das</h1>
+    <div class="sub">Voice companion for the first 1000 days &middot; with Rupa Devi</div>
+  </header>
+
+  <div id="status" class="status">Tap the circle to begin</div>
+  <button id="mic" class="mic">Start</button>
+
+  <div id="transcript" class="transcript"></div>
+
+  <div class="card">
+    <h3>Beneficiary Profile</h3>
+    <div class="row"><span class="label">Name</span><span id="p-name" class="val empty">—</span></div>
+    <div class="row"><span class="label">Age</span><span id="p-age" class="val empty">—</span></div>
+    <div class="row"><span class="label">Mobile</span><span id="p-mobile" class="val empty">—</span></div>
+    <div class="row"><span class="label">Village</span><span id="p-village" class="val empty">—</span></div>
+    <div id="net" class="net"></div>
+  </div>
+
+  <div class="card">
+    <h3>Captured Details</h3>
+    <div id="details"><div class="muted-empty">Details will appear here as the conversation goes on…</div></div>
+  </div>
+
+  <div class="card" id="contacts-card" style="display:none">
+    <h3>Contacts Shared</h3>
+    <div id="contacts"></div>
+  </div>
+
+  <div class="controls"><button id="endBtn" class="btn">End call</button></div>
+
+  <div class="hint">
+    Use Google Chrome and allow the microphone. Headphones are recommended.<br>
+    Just speak naturally — Rupa Devi will know when you have finished.
+  </div>
+</div>
+
+<script type="module">
+/* ===========================================================================
+   Gyarah Das — OpenAI Realtime (GA) over a TOKENLESS RELAY.
+   Browser <-> our server (localhost) <-> OpenAI. The key stays on the server.
+   This file drives the FULL onboarding + first-trimester conversation.
+=========================================================================== */
+import { SAFETY_NET } from "./safety-net.js";
+
+// --- Rupa Devi's instructions: persona + the full Knowledge Base flow -------
+const INSTRUCTIONS = `
+You are Rupa Devi, a warm, caring voice companion calling on behalf of the
+Gyarah Das programme from the Integrated Command and Control Centre (ICCC),
+Uttar Pradesh. Gyarah Das supports mothers through pregnancy and the child's
+first 1000 days (until the child turns two).
+
+SPEAK IN ENGLISH. Speak like a trusted elder sister or community helper — warm,
+respectful, empathetic, patient, non-judgmental. Never sound like a call-centre
+agent. Use simple, everyday words; avoid medical jargon (say "pregnancy check-up",
+not "ANC"). Keep every turn short — one or two gentle sentences.
+
+CORE RULES:
+- Ask ONLY ONE question at a time, then stop and listen. Never stack questions.
+- Warmly acknowledge each answer before moving on ("Thank you for sharing that",
+  "That is helpful", "Lovely").
+- She may stop at any moment. If she declines, is busy, or wants to end, do NOT
+  push — warmly thank her, invite her to call back anytime, then call end_call.
+- Handle corrections naturally (e.g. "no, my age is 24") and update the detail.
+
+TOOLS — use them as you talk:
+- update_profile(name|age|mobile|village): call the moment you learn each one.
+- lookup_village(village): call right after you learn the village. Use the NAMES
+  it returns when you introduce her local support team.
+- record_field(section, label, value): call for EVERY concrete fact she gives
+  (e.g. section "Pregnancy", label "Current stage", value "First trimester";
+  or section "First Trimester Care", label "First check-up done", value "Yes").
+- get_contact_number(stakeholder): ONLY when she asks for someone's number.
+  NEVER say any phone number aloud unless she asked and you called this tool.
+- end_call(reason): when the conversation is complete or she wants to stop.
+
+FOLLOW THIS CONVERSATION IN ORDER:
+
+PART A — ONBOARDING
+1. Greet: "Namaste, my name is Rupa Devi, calling from the I-C-C-C, Uttar Pradesh.
+   Welcome to Gyarah Das." Briefly say you support mothers through pregnancy until
+   the child turns two.
+2. Consent: gently ask if you may take a few details to support her and connect
+   her with health and nutrition services. If no → thank her warmly, end_call. If yes → continue.
+3. Profile, one at a time: full name → age → mobile number → which village she lives in.
+   Call update_profile for each. After the village, call lookup_village.
+
+PART B — WHO SHE IS
+4. Ask: "Are you currently pregnant?"
+   - Yes → go to PART C.
+   - No → ask: "Do you have a child below two years of age?"
+       - Yes → go to PART D.
+       - No → warmly explain Gyarah Das currently supports mothers during pregnancy
+         and children under two, thank her, end_call.
+
+PART C — PREGNANCY (find the trimester)
+5. Congratulate her warmly. Ask if she remembers the first day of her last monthly
+   period before pregnancy.
+   - If she knows it (even approximately) → work out roughly how many months pregnant
+     she is, which trimester, and an approximate due date.
+   - If not → ask whether a doctor, ANM, ASHA, or ultrasound told her how many months
+     pregnant she is, and use that.
+   - If still unknown → gently explain you cannot work out the stage yet; ask her to
+     find out from her ANM/ASHA or an ultrasound and call back; thank her; end_call.
+6. Tell her the trimester and approximate due date. record_field("Pregnancy",
+   "Current stage", e.g. "First trimester (about 2 months)") and the approximate due date.
+   Trimesters: First = 0–3 months, Second = 4–6 months, Third = 7–9 months.
+   → Do PART E (local support). Then:
+      - First trimester → do PART F.
+      - Second/third trimester → warmly say you will guide her on the right care for
+        this stage and stay in touch (detailed guidance is being added), then end_call.
+
+PART D — MOTHER OF A YOUNG CHILD
+7. Ask the child's date of birth (or age in months if she doesn't know the date).
+   - Older than 18 months → explain new registration is only for children 18 months
+     or younger; thank her; end_call.
+   - 18 months or less → tell her the child's stage and record_field it.
+   → Do PART E (local support). Then warmly say you will guide her for this stage and
+     stay in touch (detailed guidance is being added), then end_call.
+
+PART E — INTRODUCE HER LOCAL SUPPORT TEAM (right after registration)
+8. Using the lookup_village result, warmly introduce her local support BY NAME
+   (never read phone numbers):
+   - ASHA <name>: her first point of contact — registration, home visits, counselling, referrals.
+   - Anganwadi Worker <name>: nutrition services, Take Home Ration, nutrition counselling.
+   - ANM <name>: pregnancy check-ups, immunization, maternal health.
+   - Nearby facilities: PHC <name> (<distance>, <time>), CHC <name> (<distance>, <time>),
+     District Hospital <name> (<distance>, <time>).
+   - Gram Sathi <name> and SHG representative <name> help connect to local services.
+   - Emergency: ambulance 102 (mother-and-child transport) and 108 (emergency);
+     a local volunteer transport may help if the ambulance is delayed.
+   Reassure: "You are not alone — I can connect you to the right person when needed."
+   Share a number only if she asks (then use get_contact_number).
+
+PART F — FIRST TRIMESTER CARE (only if first trimester)
+Go through these gently, ONE topic at a time, acknowledging and using record_field,
+and offering the right helper where there is a gap:
+ (a) Has she told her ASHA and Anganwadi worker about the pregnancy? If no →
+     encourage early registration; mention her ASHA <name> and Anganwadi worker <name> can help.
+ (b) Has she had any pregnancy check-up yet?
+     - Yes → where (government / private)? Was blood pressure measured (normal/high/
+       not measured)? Was an abdominal examination done? Was her weight measured? Was a
+       blood (haemoglobin) test done — was she told normal / anaemic / severely anaemic?
+       Did anyone mention any health concern? record_field each answer.
+     - No → encourage the first check-up soon; her ASHA <name>/Anganwadi worker <name>
+       can guide her to the next village health & nutrition day; ask if she wants their contact.
+ (c) Iron-Folic Acid (IFA) tablets: received any? roughly how many? taking them
+     regularly? if not, why (side effects / forgets / feels healthy / fear / other)?
+     Gently explain they prevent anaemia and help the baby. If none received, her ANM <name> can help.
+ (d) Has she had her first TT injection this pregnancy? If no → explain it protects
+     mother and baby; her ANM <name> can guide her to the next session.
+ (e) Is she able to rest in the afternoon? If no → gently encourage daytime rest.
+ (f) Is she taking one extra meal a day? If no → encourage one extra nutritious meal.
+ (g) Is she registered with the Anganwadi centre and receiving Take Home Ration? If
+     gaps → her Anganwadi worker <name> can help; ask if she wants the contact.
+Then warmly close — thank her by name, remind her the support team is there for her,
+say you will stay in touch — and call end_call.
+
+Begin now with the greeting and consent.
+`;
+
+// --- Tools ------------------------------------------------------------------
+const TOOLS = [
+  { type:"function", name:"update_profile",
+    description:"Save a beneficiary detail as soon as it is known. Send only the field(s) just learned.",
+    parameters:{ type:"object", properties:{
+      name:{type:"string"}, age:{type:"string"}, mobile:{type:"string"}, village:{type:"string"} } } },
+  { type:"function", name:"lookup_village",
+    description:"Look up the village in the local safety-net directory. Returns local worker names and nearby facilities (no phone numbers).",
+    parameters:{ type:"object", properties:{ village:{type:"string"} }, required:["village"] } },
+  { type:"function", name:"record_field",
+    description:"Record one concrete piece of information the mother shared, for her care record.",
+    parameters:{ type:"object", properties:{
+      section:{type:"string", description:"e.g. Pregnancy, First Trimester Care, Nutrition"},
+      label:{type:"string"}, value:{type:"string"} }, required:["label","value"] } },
+  { type:"function", name:"get_contact_number",
+    description:"Get a stakeholder's phone number. Call ONLY when the mother asks for a contact number.",
+    parameters:{ type:"object", properties:{
+      stakeholder:{type:"string", enum:["ASHA","ANM","AWW","gramSathi","shg","transport"]} },
+      required:["stakeholder"] } },
+  { type:"function", name:"end_call",
+    description:"End the conversation gracefully after a goodbye, or when she declines or wants to stop.",
+    parameters:{ type:"object", properties:{ reason:{type:"string"} } } },
+];
+
+// --- DOM --------------------------------------------------------------------
+const $ = (id)=>document.getElementById(id);
+const micBtn=$("mic"), statusEl=$("status"), transcript=$("transcript"), endBtn=$("endBtn"),
+      detailsEl=$("details"), contactsCard=$("contacts-card"), contactsEl=$("contacts");
+
+let ws=null, micStream=null, captureCtx=null, processor=null, playCtx=null;
+let connected=false, ending=false, gotError=false;
+let playQueue=[], nextPlayTime=0;
+let detailCount=0;
+
+// --- UI helpers -------------------------------------------------------------
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className="status"+(cls?" "+cls:""); }
+function setProfile(key,val){ const el=$("p-"+key); if(el){ el.textContent=val; el.classList.remove("empty"); } }
+let agentBubble=null;
+function bubble(who,cls){ const d=document.createElement("div"); d.className="msg "+cls;
+  d.innerHTML=`<span class="who">${who}</span><span class="txt"></span>`;
+  transcript.appendChild(d); transcript.scrollTop=transcript.scrollHeight; return d; }
+function setBubbleText(d,t){ d.querySelector(".txt").textContent=t; transcript.scrollTop=transcript.scrollHeight; }
+
+let lastSection=null;
+function addDetail(section, label, value){
+  if(detailCount===0) detailsEl.innerHTML="";
+  detailCount++;
+  if(section && section!==lastSection){
+    const s=document.createElement("div"); s.className="sec"; s.textContent=section;
+    detailsEl.appendChild(s); lastSection=section;
+  }
+  const r=document.createElement("div"); r.className="row";
+  r.innerHTML=`<span class="label"></span><span class="val"></span>`;
+  r.children[0].textContent=label; r.children[1].textContent=value;
+  detailsEl.appendChild(r);
+}
+function addContact(role,name,mobile){
+  contactsCard.style.display="block";
+  const r=document.createElement("div"); r.className="row";
+  r.innerHTML=`<span class="label"></span><span class="val"></span>`;
+  r.children[0].textContent=role+(name?" — "+name:""); r.children[1].textContent=mobile;
+  contactsEl.appendChild(r);
+}
+
+// --- Audio helpers ----------------------------------------------------------
+function downsample(buf, inRate, outRate){
+  if(outRate>=inRate) return buf;
+  const ratio=inRate/outRate, newLen=Math.round(buf.length/ratio), out=new Float32Array(newLen);
+  let o=0,i=0;
+  while(o<newLen){ const next=Math.round((o+1)*ratio); let sum=0,c=0;
+    for(; i<next && i<buf.length; i++){ sum+=buf[i]; c++; } out[o++]= c? sum/c : 0; }
+  return out;
+}
+function floatTo16BitPCM(f32){
+  const out=new Int16Array(f32.length);
+  for(let i=0;i<f32.length;i++){ const s=Math.max(-1,Math.min(1,f32[i])); out[i]= s<0? s*0x8000 : s*0x7FFF; }
+  return out.buffer;
+}
+function b64FromBuf(buf){
+  const bytes=new Uint8Array(buf); let bin=""; const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+  return btoa(bin);
+}
+function bufFromB64(b64){
+  const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function enqueueAudio(b64){
+  const int16=new Int16Array(bufFromB64(b64));
+  const f32=new Float32Array(int16.length);
+  for(let i=0;i<int16.length;i++) f32[i]=int16[i]/0x8000;
+  const ab=playCtx.createBuffer(1, f32.length, 24000); ab.getChannelData(0).set(f32);
+  const src=playCtx.createBufferSource(); src.buffer=ab; src.connect(playCtx.destination);
+  const now=playCtx.currentTime; if(nextPlayTime<now) nextPlayTime=now;
+  src.start(nextPlayTime); nextPlayTime+=ab.duration;
+  playQueue.push(src); src.onended=()=>{ const i=playQueue.indexOf(src); if(i>=0) playQueue.splice(i,1); };
+}
+function stopPlayback(){ playQueue.forEach(s=>{ try{s.stop();}catch(_){} }); playQueue=[]; nextPlayTime=0; }
+
+// --- Tools ------------------------------------------------------------------
+function villageDir(name){
+  const norm=(name||"").toLowerCase().replace(/[^a-z]/g,"");
+  for(const k in SAFETY_NET) if(norm.includes(k)) return SAFETY_NET[k];
+  return null;
+}
+function runTool(name,args){
+  if(name==="update_profile"){
+    ["name","age","mobile","village"].forEach(k=>{ if(args[k]) setProfile(k,args[k]); });
+    return { ok:true };
+  }
+  if(name==="lookup_village"){
+    const dir=villageDir(args.village);
+    if(dir){
+      setProfile("village",dir.village);
+      $("net").textContent="✓ Local support mapped for "+dir.village+" (names available; numbers shared only on request).";
+      // Names + facilities only — NO phone numbers
+      const s=dir.stakeholders;
+      return { found:true, village:dir.village,
+        workers:{ ASHA:s.ASHA.name, ANM:s.ANM.name, AWW:s.AWW.name,
+                  gramSathi:s.gramSathi.name, shg:s.shg.name, transport:s.transport.name },
+        facilities:dir.facilities };
+    }
+    return { found:false };
+  }
+  if(name==="record_field"){
+    addDetail(args.section||"General", args.label||"", args.value||"");
+    return { ok:true };
+  }
+  if(name==="get_contact_number"){
+    const dir=villageDir($("p-village").textContent);
+    const s=dir && dir.stakeholders[args.stakeholder];
+    if(s){ addContact(s.role, s.name, s.mobile); return { name:s.name, role:s.role, mobile:s.mobile }; }
+    return { found:false };
+  }
+  if(name==="end_call"){ setStatus("Closing the call…",""); setTimeout(endCall,4500); return { ok:true }; }
+  return { ok:false };
+}
+
+// --- Events from OpenAI (relayed) -------------------------------------------
+function handleEvent(ev){
+  switch(ev.type){
+    case "response.output_audio.delta":
+      if(ev.delta) enqueueAudio(ev.delta);
+      setStatus("Rupa Devi is speaking…","speaking"); break;
+    case "response.output_audio_transcript.delta":
+      if(!agentBubble) agentBubble=bubble("Rupa Devi","agent interim");
+      setBubbleText(agentBubble,(agentBubble.querySelector(".txt").textContent||"")+ev.delta); break;
+    case "response.output_audio_transcript.done":
+      if(agentBubble){ agentBubble.classList.remove("interim"); agentBubble=null; } break;
+
+    case "conversation.item.input_audio_transcription.completed":
+      if(ev.transcript && ev.transcript.trim()){ const b=bubble("You","user"); setBubbleText(b,ev.transcript.trim()); }
+      break;
+
+    case "input_audio_buffer.speech_started":
+      stopPlayback(); setStatus("Listening…","listening"); break;
+
+    case "response.function_call_arguments.done": {
+      let args={}; try{ args=JSON.parse(ev.arguments||"{}"); }catch(_){}
+      const result=runTool(ev.name,args);
+      send({ type:"conversation.item.create",
+        item:{ type:"function_call_output", call_id:ev.call_id, output:JSON.stringify(result) } });
+      if(ev.name!=="end_call") send({ type:"response.create" });
+      break;
+    }
+
+    case "error":
+      console.error("Realtime error:",ev.error); gotError=true;
+      setStatus("Error: "+(ev.error?.message||"see console"),"error"); break;
+  }
+}
+function send(obj){ if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+
+// --- Start / connect --------------------------------------------------------
+async function start(){
+  if(connected) return;
+  micBtn.disabled=true; micBtn.textContent="…"; setStatus("Connecting…");
+  try{
+    const cfg=await (await fetch("/config")).json();
+    captureCtx=new (window.AudioContext||window.webkitAudioContext)();
+    playCtx   =new (window.AudioContext||window.webkitAudioContext)();
+    await captureCtx.resume(); await playCtx.resume();
+    micStream=await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+
+    const wsUrl=(location.protocol==="https:"?"wss":"ws")+"://"+location.host+"/realtime";
+    ws=new WebSocket(wsUrl);
+
+    ws.onopen=()=>{
+      send({ type:"session.update", session:{
+        type:"realtime",
+        output_modalities:["audio"],
+        instructions:INSTRUCTIONS,
+        audio:{
+          input:{ format:{ type:"audio/pcm", rate:24000 },
+                  turn_detection:{ type:"server_vad", silence_duration_ms:700 },
+                  transcription:{ model:"whisper-1" } },
+          output:{ format:{ type:"audio/pcm", rate:24000 }, voice:cfg.voice||"marin" }
+        },
+        tools:TOOLS, tool_choice:"auto"
+      }});
+      send({ type:"response.create" });
+      startMicStreaming();
+      connected=true; micBtn.disabled=false; micBtn.textContent="Live"; micBtn.classList.add("live");
+      setStatus("Connected — say Namaste!","listening");
+    };
+    ws.onmessage=(e)=>{ try{ handleEvent(JSON.parse(e.data)); }catch(_){} };
+    ws.onerror =()=>{ if(!gotError) setStatus("Connection error — is the server running?","error"); };
+    ws.onclose =(e)=>{ console.log("WS closed",e.code,e.reason);
+      if(!ending && !gotError) setStatus("Connection closed before any reply — check the server terminal.","error"); };
+  }catch(err){
+    console.error(err); setStatus("Could not start: "+err.message,"error");
+    micBtn.disabled=false; micBtn.textContent="Start";
+  }
+}
+
+function startMicStreaming(){
+  const source=captureCtx.createMediaStreamSource(micStream);
+  processor=captureCtx.createScriptProcessor(4096,1,1);
+  const mute=captureCtx.createGain(); mute.gain.value=0;
+  source.connect(processor); processor.connect(mute); mute.connect(captureCtx.destination);
+  processor.onaudioprocess=(e)=>{
+    if(!ws || ws.readyState!==WebSocket.OPEN) return;
+    const down=downsample(e.inputBuffer.getChannelData(0), captureCtx.sampleRate, 24000);
+    send({ type:"input_audio_buffer.append", audio:b64FromBuf(floatTo16BitPCM(down)) });
+  };
+}
+
+function endCall(){
+  if(ending) return; ending=true;
+  stopPlayback();
+  try{ processor&&(processor.onaudioprocess=null); }catch(_){}
+  try{ ws&&ws.close(); }catch(_){}
+  try{ micStream&&micStream.getTracks().forEach(t=>t.stop()); }catch(_){}
+  try{ captureCtx&&captureCtx.close(); }catch(_){}
+  try{ playCtx&&playCtx.close(); }catch(_){}
+  connected=false; micBtn.classList.remove("live"); micBtn.disabled=true;
+  micBtn.textContent="Ended"; setStatus("Call ended. Saved to the data folder. 🙏","");
+}
+
+micBtn.addEventListener("click",start);
+endBtn.addEventListener("click",endCall);
+</script>
+</body>
+</html>
