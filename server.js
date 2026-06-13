@@ -34,6 +34,20 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { model: MODEL, voice: VOICE });
   }
 
+  // Rupa Devi's reference knowledge — re-read each call so edits apply live.
+  // Phone numbers (10+ digit runs) are redacted before the agent ever sees them.
+  if (req.method === "GET" && req.url === "/knowledge") {
+    try {
+      const md = await readFile(join(process.cwd(), "knowledge-base.md"), "utf-8");
+      const redacted = md.replace(/\d[\d\s-]{8,}\d/g, "(shared on request)");
+      res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+      return res.end(redacted);
+    } catch {
+      res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+      return res.end("");
+    }
+  }
+
   // Old Web-Speech demo, kept for reference
   if (req.method === "GET" && (req.url === "/speech" || req.url === "/speech.html")) {
     try {
