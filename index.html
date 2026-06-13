@@ -254,9 +254,18 @@ function speak(text) {
   });
 }
 
-// --- Turn-taking timing -----------------------------------------------------
-const PAUSE_MS   = 3500;     // user silence after speaking → the answer is finished
-const OVERALL_MS = 30000;    // keep the mic open up to this long while waiting
+// --- Turn-taking timing (overridden by /config if served via server) --------
+let PAUSE_MS   = 3500;
+let OVERALL_MS = 30000;
+(async () => {
+  try {
+    const cfg = await (await fetch("/config")).json();
+    if (cfg.turn_taking) {
+      PAUSE_MS   = cfg.turn_taking.pause_ms   ?? PAUSE_MS;
+      OVERALL_MS = cfg.turn_taking.overall_ms ?? OVERALL_MS;
+    }
+  } catch { /* opened as a local file — keep defaults */ }
+})();
 
 const settle = (ms) => new Promise(r => setTimeout(r, ms));
 const FATAL_MIC = new Set(["not-allowed", "service-not-allowed", "audio-capture"]);

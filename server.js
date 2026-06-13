@@ -11,10 +11,22 @@ import { SAFETY_NET } from "./public/safety-net.js";
 import { newRecording, fromClient, fromServer, finalize } from "./recorder.js";
 
 const PORT  = process.env.PORT || 3000;
-const MODEL = process.env.REALTIME_MODEL || "gpt-realtime";
-const VOICE = process.env.REALTIME_VOICE || "marin";
 const KEY   = process.env.OPENAI_API_KEY;
 const DATA_DIR = join(process.cwd(), "data");
+
+let CFG = {};
+try {
+  CFG = JSON.parse(await readFile(join(process.cwd(), "config.json"), "utf8"));
+} catch { /* missing config.json is fine — all values fall back to defaults below */ }
+
+let INSTRUCTIONS = "";
+try {
+  const inst = JSON.parse(await readFile(join(process.cwd(), "instructions.json"), "utf8"));
+  INSTRUCTIONS = inst.instructions || "";
+} catch { /* instructions.json missing — client will show an error */ }
+
+const MODEL = process.env.REALTIME_MODEL || CFG.model || "gpt-realtime";
+const VOICE = process.env.REALTIME_VOICE || CFG.voice || "marin";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -31,7 +43,7 @@ const PUBLIC_DIR = join(process.cwd(), "public");
 // ---------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/config") {
-    return json(res, 200, { model: MODEL, voice: VOICE });
+    return json(res, 200, { ...CFG, model: MODEL, voice: VOICE });
   }
 
   // Old Web-Speech demo, kept for reference
