@@ -21,9 +21,9 @@ try {
 
 let INSTRUCTIONS = "";
 try {
-  const inst = JSON.parse(await readFile(join(process.cwd(), "instructions.json"), "utf8"));
+  const inst = JSON.parse(await readFile(join(process.cwd(), "instructions_hi_v2.json"), "utf8"));
   INSTRUCTIONS = inst.instructions || "";
-} catch { /* instructions.json missing — client will show an error */ }
+} catch { /* instructions file missing — client will show an error */ }
 
 const MODEL = process.env.REALTIME_MODEL || CFG.model || "gpt-realtime";
 const VOICE = process.env.REALTIME_VOICE || CFG.voice || "marin";
@@ -43,7 +43,7 @@ const PUBLIC_DIR = join(process.cwd(), "public");
 // ---------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/config") {
-    return json(res, 200, { ...CFG, model: MODEL, voice: VOICE });
+    return json(res, 200, { ...CFG, model: MODEL, voice: VOICE, instructions: INSTRUCTIONS });
   }
 
   // Old Web-Speech demo, kept for reference

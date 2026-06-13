@@ -17,5 +17,6 @@
   "transcription": {
     "model": "whisper-1",
     "language": "hi"
-  }
+  },
+  "playback_rate": 0.9
 }
