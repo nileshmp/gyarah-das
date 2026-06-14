@@ -139,6 +139,16 @@ CORE RULES:
   The system waits 20 seconds and will tell you (via a [SYSTEM] message) to say
   goodbye and end the call if she stays silent. Never call end_call just because
   you heard silence, noise, or something unclear.
+- ALWAYS ANSWER QUESTIONS ABOUT PLACES, FACILITIES, AND HELPLINES IMMEDIATELY —
+  at ANY point in the call, even in the middle of onboarding. If she mentions or
+  asks about a place or facility (for example "Saifni", "Shahabad", "Rampur",
+  "PHC", "CHC", "the hospital", "district hospital") or a helpline, recognise it
+  from your REFERENCE KNOWLEDGE and briefly tell her what it is, how far it is,
+  and what it helps with. The places PHC Saifni, CHC Shahabad, and District
+  Hospital Rampur are the health facilities that serve Anwa village. Names like
+  Saifni, Shahabad, and Rampur refer to those facilities — never say you do not
+  know them. After answering in one or two short sentences, gently continue from
+  where you were in the conversation. Do NOT defer these questions to later.
 
 TOOLS — use them as you talk:
 - update_profile(name|age|mobile|village): call the moment you learn each one.
@@ -396,6 +406,7 @@ let detailCount=0;
 const SILENCE_MS = 20000;
 let silenceTimer = null;
 let pendingEnd = false;  // true once end_call tool fires — prevents new timers/nudges
+let endRequested = false; // end_call fired; drain audio at response.done, then hang up
 
 function clearSilenceTimer(){ if(silenceTimer){ clearTimeout(silenceTimer); silenceTimer=null; } }
 
@@ -507,9 +518,25 @@ function enqueueAudio(b64){
 function stopPlayback(){ playQueue.forEach(s=>{ try{s.stop();}catch(_){} }); playQueue=[]; nextPlayTime=0; }
 
 // --- Tools ------------------------------------------------------------------
+// Generic facility words that are NOT place names — never match a village on these.
+const FACILITY_STOPWORDS = new Set(["phc","chc","primary","health","centre",
+  "center","community","district","hospital","nagar","clinic"]);
+
 function villageDir(name){
   const norm=(name||"").toLowerCase().replace(/[^a-z]/g,"");
-  for(const k in SAFETY_NET) if(norm.includes(k)) return SAFETY_NET[k];
+  if(!norm) return null;
+  for(const k in SAFETY_NET){
+    if(norm.includes(k)) return SAFETY_NET[k];                 // village name itself
+    // Also recognise the facility TOWNS that serve this village (Saifni, Shahabad,
+    // Rampur) so mentioning a facility place still maps back to the directory.
+    const fac = SAFETY_NET[k].facilities || {};
+    for(const fk in fac){
+      const tokens = (fac[fk].name || "").toLowerCase().match(/[a-z]+/g) || [];
+      for(const t of tokens){
+        if(t.length >= 4 && !FACILITY_STOPWORDS.has(t) && norm.includes(t)) return SAFETY_NET[k];
+      }
+    }
+  }
   return null;
 }
 function runTool(name,args){
@@ -541,7 +568,12 @@ function runTool(name,args){
     if(s){ addContact(s.role, s.name, s.mobile); return { name:s.name, role:s.role, mobile:s.mobile }; }
     return { found:false };
   }
-  if(name==="end_call"){ setStatus("Finishing…",""); pendingEnd=true; waitForAudioThenEnd(); return { ok:true }; }
+  if(name==="end_call"){
+    // Do NOT start draining now — the goodbye audio may not be enqueued yet.
+    // Mark it; response.done will drain the full audio, then hang up.
+    setStatus("Finishing…",""); pendingEnd=true; endRequested=true; clearSilenceTimer();
+    return { ok:true };
+  }
   return { ok:false };
 }
 
@@ -558,9 +590,15 @@ function handleEvent(ev){
       if(agentBubble){ agentBubble.classList.remove("interim"); agentBubble=null; }
       break;
     case "response.done":
-      // Her whole turn is done and all audio is now enqueued. Arm the silence
-      // wait, which only begins counting once the audio has finished playing.
-      startSilenceTimer(); break;
+      // Her whole turn is done and ALL audio for it is now enqueued.
+      if(endRequested){
+        // End requested: let the full goodbye finish playing, then hang up.
+        waitForAudioThenEnd();
+      } else {
+        // Arm the silence wait, which only starts counting once audio finishes.
+        startSilenceTimer();
+      }
+      break;
 
     case "conversation.item.input_audio_transcription.completed": {
       const text=(ev.transcript||"").trim();
@@ -576,7 +614,11 @@ function handleEvent(ev){
     }
 
     case "input_audio_buffer.speech_started":
-      stopPlayback(); setStatus("Listening…","listening"); break;
+      // Barge-in: let the mother interrupt and stop Rupa Devi's audio — EXCEPT
+      // while we are delivering the final goodbye. Once end_call has fired, the
+      // goodbye must finish; echo or stray noise must not cut it off and hang up.
+      if(!pendingEnd){ stopPlayback(); setStatus("Listening…","listening"); }
+      break;
       // NOTE: do NOT clear silence timer here — speech_started fires on mic echo too.
       // Only a confirmed transcription (above) should cancel the 9-second wait.
 
@@ -585,7 +627,8 @@ function handleEvent(ev){
       const result=runTool(ev.name,args);
       send({ type:"conversation.item.create",
         item:{ type:"function_call_output", call_id:ev.call_id, output:JSON.stringify(result) } });
-      if(ev.name!=="end_call") send({ type:"response.create" });
+      // Don't start a new response once we're ending — it would race the goodbye.
+      if(ev.name!=="end_call" && !endRequested) send({ type:"response.create" });
       break;
     }
 
@@ -613,17 +656,28 @@ async function start(){
     ws=new WebSocket(wsUrl);
 
     ws.onopen=()=>{
+      // Server-side background-noise reduction (fan, traffic, room noise). Mode comes
+      // from /config (default far_field). "off"/"none" omits it entirely.
+      const nrMode=(cfg.noiseReduction||"far_field").toLowerCase();
+      const noiseReduction=(nrMode==="off"||nrMode==="none")?null:{ type:nrMode };
       send({ type:"session.update", session:{
         type:"realtime",
         output_modalities:["audio"],
         instructions:INSTRUCTIONS + (knowledge ? "\n\n===== REFERENCE KNOWLEDGE =====\n"+knowledge : ""),
         audio:{
           input:{ format:{ type:"audio/pcm", rate:24000 },
+                  // Remove steady background noise before it reaches VAD/transcription.
+                  ...(noiseReduction ? { noise_reduction:noiseReduction } : {}),
                   // Higher threshold + padding so room noise / breaths don't trip a turn.
                   turn_detection:{ type:"server_vad", threshold:0.7,
                                    prefix_padding_ms:300, silence_duration_ms:800 },
                   // Pin transcription to English so it can't hallucinate foreign text.
-                  transcription:{ model:"gpt-4o-mini-transcribe", language:"en" } },
+                  // The prompt biases the recogniser toward local place/role names
+                  // so rural names (Saifni, Shahabad, Rampur, Anwa) aren't misheard.
+                  transcription:{ model:"gpt-4o-mini-transcribe", language:"en",
+                    prompt:"Gyarah Das, Rupa Devi, Anwa, Saifni, Shahabad, Rampur, "+
+                      "PHC, CHC, district hospital, ASHA, ANM, Anganwadi, Gram Sathi, "+
+                      "Take Home Ration, IFA tablets, TT injection, JSY, PMMVY, JSSK." } },
           output:{ format:{ type:"audio/pcm", rate:24000 }, voice:cfg.voice||"marin" }
         },
         tools:TOOLS, tool_choice:"auto"
@@ -657,7 +711,7 @@ function startMicStreaming(){
 
 function endCall(){
   if(ending) return; ending=true;
-  pendingEnd=false;
+  pendingEnd=false; endRequested=false;
   clearSilenceTimer();
   stopPlayback();
   try{ processor&&(processor.onaudioprocess=null); }catch(_){}

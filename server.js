@@ -13,6 +13,10 @@ import { newRecording, fromClient, fromServer, finalize } from "./recorder.js";
 const PORT  = process.env.PORT || 3000;
 const MODEL = process.env.REALTIME_MODEL || "gpt-realtime";
 const VOICE = process.env.REALTIME_VOICE || "marin";
+// Background-noise reduction applied server-side by OpenAI before VAD/transcription.
+// "far_field" (default) is most aggressive on ambient noise (fan, traffic);
+// "near_field" suits phone-to-ear/headset; "off" disables it.
+const NOISE_REDUCTION = process.env.REALTIME_NOISE_REDUCTION || "far_field";
 const KEY   = process.env.OPENAI_API_KEY;
 const DATA_DIR = join(process.cwd(), "data");
 
@@ -31,7 +35,7 @@ const PUBLIC_DIR = join(process.cwd(), "public");
 // ---------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/config") {
-    return json(res, 200, { model: MODEL, voice: VOICE });
+    return json(res, 200, { model: MODEL, voice: VOICE, noiseReduction: NOISE_REDUCTION });
   }
 
   // Rupa Devi's reference knowledge — re-read each call so edits apply live.
@@ -55,6 +59,22 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(buf);
     } catch { res.writeHead(404); return res.end("Not found"); }
+  }
+
+  // Language routing. "/" shows a language picker; "/English" serves the live app;
+  // "/Hindi" shows a "coming soon" placeholder until the Hindi version is built.
+  if (req.method === "GET") {
+    const route = req.url.split("?")[0].replace(/\/+$/, "").toLowerCase() || "/";
+    const serveHtml = async (file) => {
+      try {
+        const buf = await readFile(join(PUBLIC_DIR, file));
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(buf);
+      } catch { res.writeHead(404); res.end("Not found"); }
+    };
+    if (route === "/")        return serveHtml("landing.html");
+    if (route === "/english") return serveHtml("index.html");
+    if (route === "/hindi")   return serveHtml("hindi-soon.html");
   }
 
   // Static files from /public
@@ -158,7 +178,7 @@ await mkdir(DATA_DIR, { recursive: true });
 
 server.listen(PORT, () => {
   console.log(`\n  Gyarah Das voice app → http://localhost:${PORT}`);
-  console.log(`  Model: ${MODEL}  |  Voice: ${VOICE}  |  Mode: tokenless relay`);
+  console.log(`  Model: ${MODEL}  |  Voice: ${VOICE}  |  Noise reduction: ${NOISE_REDUCTION}  |  Mode: tokenless relay`);
   console.log(`  Calls saved to: ${DATA_DIR}`);
   if (!KEY) console.log("  ⚠  No OPENAI_API_KEY found in environment.\n");
   else      console.log("  ✓  API key loaded (stays on the server).\n");

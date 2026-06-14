@@ -91,8 +91,10 @@ Browser  ──WebSocket (/realtime)──►  Our Node server  ──WebSocket 
 | `.env.example` | Template only. Real key lives in the OS env var, not a committed file. |
 
 ### Server endpoints
-- `GET /` → `public/index.html` (the live app)
-- `GET /config` → `{ model, voice }`
+- `GET /` → `public/landing.html` (language picker: English / Hindi)
+- `GET /English` → `public/index.html` (the live app; English is the only built language so far)
+- `GET /Hindi` → `public/hindi-soon.html` (placeholder; Hindi flow is Stage 2, not built yet)
+- `GET /config` → `{ model, voice, noiseReduction }`
 - `GET /knowledge` → `knowledge-base.md`, **re-read each call**, with phone numbers **redacted** (regex `\d[\d\s-]{8,}\d`). Helplines 102/108 and distances survive.
 - `GET /speech` → the old Web Speech prototype
 - `WS /realtime` → the relay
@@ -114,7 +116,7 @@ The **Beta** Realtime API is **retired**. We use **GA**. Key differences that bi
     output_modalities: ["audio"],
     instructions: "...",
     audio: {
-      input:  { format:{type:"audio/pcm",rate:24000}, turn_detection:{type:"server_vad",threshold:0.7,prefix_padding_ms:300,silence_duration_ms:800}, transcription:{model:"gpt-4o-mini-transcribe",language:"en"} },
+      input:  { format:{type:"audio/pcm",rate:24000}, noise_reduction:{type:"far_field"}, turn_detection:{type:"server_vad",threshold:0.7,prefix_padding_ms:300,silence_duration_ms:800}, transcription:{model:"gpt-4o-mini-transcribe",language:"en"} },
       output: { format:{type:"audio/pcm",rate:24000}, voice:"marin" }
     },
     tools: [...], tool_choice: "auto"
@@ -124,21 +126,36 @@ The **Beta** Realtime API is **retired**. We use **GA**. Key differences that bi
   - assistant audio chunk: `response.output_audio.delta`
   - assistant transcript: `response.output_audio_transcript.delta` / `.done`
   - user transcript: `conversation.item.input_audio_transcription.completed`
-  - barge-in: `input_audio_buffer.speech_started` (we flush playback to allow interruption)
+  - barge-in: `input_audio_buffer.speech_started` (flushes playback so the mother can
+    interrupt) — BUT this is suppressed once `end_call` has fired (`pendingEnd`), so echo
+    or noise cannot cut off the final goodbye.
   - tool call: `response.function_call_arguments.done`
+  - end of a turn: `response.done`
   - client appends audio with: `input_audio_buffer.append`
 - **Noise / hallucination guardrails** (added after garbage foreign-script transcripts
-  like Korean appeared on room noise):
+  like Korean appeared on room noise, then expanded for rural background noise):
+  - **Server-side noise reduction** (`audio.input.noise_reduction`) removes steady
+    background noise (fan, traffic) before VAD/transcription. Mode comes from `/config`
+    (env `REALTIME_NOISE_REDUCTION`, default `far_field`; `near_field` for phone-to-ear;
+    `off`/`none` omits the field). Browser-level `noiseSuppression`/`echoCancellation`
+    in getUserMedia stay on as a first layer.
   - Transcription is `gpt-4o-mini-transcribe` with `language:"en"` (whisper-1
-    hallucinated random languages on silence; pinning English + the newer model fixes it).
+    hallucinated random languages on silence; pinning English + the newer model fixes it),
+    plus a `prompt` listing local place/role names (Anwa, Saifni, Shahabad, Rampur, PHC,
+    CHC, ASHA, ANM, …) so rural names aren't misheard.
   - VAD `threshold:0.7` + `prefix_padding_ms:300` + `silence_duration_ms:800` so breaths /
     background noise don't trip a false turn.
   - Client drops any transcript containing non-Latin script (treats it as noise: not shown,
     does NOT reset the silence wait). See `handleEvent` in `public/index.html`.
-  - Instructions forbid inventing an answer; if input is unclear the agent asks her to repeat.
-- **Silence handling:** when the mother is quiet ~9s, the client repeats only the last
-  question (up to 3 times), then warmly ends the call. The 9s timer is cancelled ONLY by a
-  confirmed English transcription — never by `speech_started` (which fires on mic echo).
+  - Instructions forbid inventing an answer; if input is unclear the agent stays quiet.
+- **Silence handling (current):** ask each question ONCE, then wait **20 seconds** of real
+  silence; if no clear answer, the client injects a `[SYSTEM]` goodbye nudge and ends the
+  call. NO repeating the question. The 20s countdown only starts after Rupa Devi's audio
+  finishes playing (`startSilenceTimer` adds remaining playback time), is armed at
+  `response.done`, and is cancelled ONLY by a confirmed English transcription — never by
+  `speech_started` (which fires on mic echo).
+- **End-of-call drain:** `end_call` sets `endRequested`; the client waits for `response.done`
+  then drains the audio queue (`waitForAudioThenEnd`) so the full goodbye plays before hangup.
 
 ---
 
@@ -283,3 +300,13 @@ The owner will drive these. Not yet built:
 - Match GA event names and session schema (§5) — do not reintroduce Beta shapes.
 - After client edits, remind to hard-refresh; after server edits, restart.
 ```
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
