@@ -160,8 +160,9 @@ let playQueue=[], nextPlayTime=0, playbackRate=1.0;
 let detailCount=0;
 
 // --- UI helpers -------------------------------------------------------------
+function toHindi(s){ return String(s).replace(/[0-9]/g,d=>'०१२३४५६७८९'[d]); }
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className="status"+(cls?" "+cls:""); }
-function setProfile(key,val){ const el=$("p-"+key); if(el){ el.textContent=val; el.classList.remove("empty"); } }
+function setProfile(key,val){ const el=$("p-"+key); if(el){ el.textContent=toHindi(val); el.classList.remove("empty"); } }
 let agentBubble=null;
 function bubble(who,cls){ const d=document.createElement("div"); d.className="msg "+cls;
   d.innerHTML=`<span class="who">${who}</span><span class="txt"></span>`;
@@ -178,14 +179,14 @@ function addDetail(section, label, value){
   }
   const r=document.createElement("div"); r.className="row";
   r.innerHTML=`<span class="label"></span><span class="val"></span>`;
-  r.children[0].textContent=label; r.children[1].textContent=value;
+  r.children[0].textContent=label; r.children[1].textContent=toHindi(value);
   detailsEl.appendChild(r);
 }
 function addContact(role,name,mobile){
   contactsCard.style.display="block";
   const r=document.createElement("div"); r.className="row";
   r.innerHTML=`<span class="label"></span><span class="val"></span>`;
-  r.children[0].textContent=role+(name?" — "+name:""); r.children[1].textContent=mobile;
+  r.children[0].textContent=role+(name?" — "+name:""); r.children[1].textContent=toHindi(mobile);
   contactsEl.appendChild(r);
 }
 
