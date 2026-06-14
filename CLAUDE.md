@@ -81,9 +81,12 @@ Browser  ──WebSocket (/realtime)──►  Our Node server  ──WebSocket 
 | File | Role |
 |---|---|
 | `server.js` | HTTP + WebSocket relay. Holds the key. Serves static files, `/config`, `/knowledge`. Wires the recorder. |
-| `public/index.html` | The live voice client: WebRTC-free audio capture/playback, the conversation instructions, tools, and on-screen UI (transcript, profile, captured details, contacts). |
-| `public/safety-net.js` | **Single source of truth** for the village directory (stakeholder names + **phone numbers**) and facilities. Imported by BOTH server (Node) and browser (ES module). |
-| `knowledge-base.md` | Rupa Devi's editable **reference knowledge** (programme, local team, facilities + what they're for, schemes, helplines, quarter framework). Loaded into her brain every call. |
+| `public/index.html` | The **English** voice client: WebRTC-free audio capture/playback, the conversation instructions, tools, and on-screen UI (transcript, profile, captured details, contacts). |
+| `public/hindi.html` | The **Hindi** voice client. A copy of `index.html` with the same audio/relay/timer logic, but Hindi `INSTRUCTIONS`, Hindi UI strings, `transcription.language:"hi"`, a Devanagari-aware noise filter, and it fetches `/knowledge-hi`. **Keep English untouched — change Hindi here only.** |
+| `public/landing.html` | Language picker shown at `/` (Hindi on top, English below) → links to `/Hindi` and `/English`. |
+| `public/safety-net.js` | **Single source of truth** for the village directory (stakeholder names + **phone numbers**) and facilities. Imported by BOTH server (Node) and browser (ES module). Shared by both languages. |
+| `knowledge-base.md` | Rupa Devi's editable **English** reference knowledge. Served redacted at `/knowledge`. |
+| `knowledge-base.hi.md` | The **Hindi** reference knowledge (same content, translated). Served redacted at `/knowledge-hi`. |
 | `recorder.js` | Captures audio + transcript + structured data from the relay; writes the 3 artifacts to `data/`. |
 | `index.html` (root) | The OLD Web Speech API prototype (no AI). Kept for reference; served at `/speech`. |
 | `data/` | Saved calls (one folder per call). |
@@ -91,10 +94,11 @@ Browser  ──WebSocket (/realtime)──►  Our Node server  ──WebSocket 
 | `.env.example` | Template only. Real key lives in the OS env var, not a committed file. |
 
 ### Server endpoints
-- `GET /` → `public/landing.html` (language picker: English / Hindi)
-- `GET /English` → `public/index.html` (the live app; English is the only built language so far)
-- `GET /Hindi` → `public/hindi-soon.html` (placeholder; Hindi flow is Stage 2, not built yet)
+- `GET /` → `public/landing.html` (language picker: Hindi on top, English below)
+- `GET /English` → `public/index.html` (English app)
+- `GET /Hindi` → `public/hindi.html` (Hindi app — same flow/logic, fully translated)
 - `GET /config` → `{ model, voice, noiseReduction }`
+- `GET /knowledge-hi` → `knowledge-base.hi.md`, redacted (Hindi knowledge base)
 - `GET /knowledge` → `knowledge-base.md`, **re-read each call**, with phone numbers **redacted** (regex `\d[\d\s-]{8,}\d`). Helplines 102/108 and distances survive.
 - `GET /speech` → the old Web Speech prototype
 - `WS /realtime` → the relay
@@ -281,7 +285,9 @@ npm start                             # expect "✓ API key loaded" + "Mode: tok
 ## 12. Deferred / coming up
 
 The owner will drive these. Not yet built:
-- **Hindi** + a stronger speech engine for rural accents (currently English, browser/OpenAI voice).
+- **Hindi voice/transcription quality** — the Hindi flow is built (`/Hindi`), but the voice
+  (`marin`) and Hindi rural-accent transcription still need real-call testing; the Hindi
+  script translation should also get a native-speaker review for tone.
 - **Detailed scripts for quarters beyond Q1** (Q2–Q11). Source KB only details Q1.
 - **More villages/facilities** in `safety-net.js` + `knowledge-base.md`.
 - **Phone / IVR deployment** (currently a web app).
