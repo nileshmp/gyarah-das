@@ -6,16 +6,23 @@
 <title>ग्यारह दास — रूपा देवी</title>
 <style>
   :root {
-    --bg:#faf7f2; --card:#fff; --accent:#b5651d; --accent-dark:#8c4a12;
-    --agent:#2e7d5b; --user:#3a4a6b; --muted:#7a7368; --line:#ece5da;
+    --bg:#F2EEF9; --card:#fff;
+    --accent:#ED790F; --accent-dark:#321466;
+    --agent:#321466; --user:#6B2FA0;
+    --muted:#8B7BA8; --line:#E0D4F5;
+    --pink:#CF2568;
   }
   * { box-sizing:border-box; }
   body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg);
-         color:#2b2620; min-height:100vh; display:flex; justify-content:center; }
+         color:#1E0E40; min-height:100vh; display:flex; justify-content:center; }
   .app { width:100%; max-width:560px; padding:20px 18px 40px; }
-  header { text-align:center; margin-bottom:14px; }
-  header h1 { margin:0; font-size:26px; color:var(--accent-dark); }
-  header .sub { margin-top:4px; font-size:14px; color:var(--muted); }
+
+  header { margin-bottom:14px; }
+  .header-banner { width:100%; border-radius:14px; display:block;
+                   box-shadow:0 4px 16px rgba(50,20,102,.18); }
+  header h1 { position:absolute; width:1px; height:1px; overflow:hidden;
+              clip:rect(0,0,0,0); white-space:nowrap; }
+
   .status { text-align:center; font-size:15px; min-height:24px; margin:10px 0 16px;
             color:var(--muted); font-weight:600; }
   .status.listening { color:var(--accent); }
@@ -24,12 +31,17 @@
 
   .mic { display:block; margin:0 auto 18px; width:120px; height:120px; border-radius:50%;
          border:none; background:var(--accent); color:#fff; font-size:16px; font-weight:700;
-         cursor:pointer; box-shadow:0 6px 18px rgba(181,101,29,.35);
+         cursor:pointer; box-shadow:0 6px 20px rgba(237,121,15,.40);
          transition:transform .15s,background .2s; }
   .mic:active { transform:scale(.96); }
   .mic:disabled { opacity:.55; cursor:default; }
-  .mic.live { background:#c62828; animation:pulse 1.4s infinite; }
-  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(198,40,40,.45);} 70%{box-shadow:0 0 0 18px rgba(198,40,40,0);} 100%{box-shadow:0 0 0 0 rgba(198,40,40,0);} }
+  .mic.live { background:var(--accent-dark); box-shadow:0 6px 20px rgba(50,20,102,.40);
+              animation:pulse 1.4s infinite; }
+  @keyframes pulse {
+    0%  { box-shadow:0 0 0 0   rgba(50,20,102,.50); }
+    70% { box-shadow:0 0 0 18px rgba(50,20,102,0);  }
+    100%{ box-shadow:0 0 0 0   rgba(50,20,102,0);  }
+  }
 
   .transcript { background:var(--card); border:1px solid var(--line); border-radius:14px;
                 padding:14px; min-height:150px; max-height:40vh; overflow-y:auto; }
@@ -41,31 +53,34 @@
   .msg.user.interim, .msg.agent.interim { opacity:.6; }
 
   .card { margin-top:16px; background:var(--card); border:1px solid var(--line);
-          border-radius:14px; padding:14px 16px; }
-  .card h3 { margin:0 0 8px; font-size:14px; color:var(--accent-dark);
-             text-transform:uppercase; letter-spacing:.5px; }
+          border-radius:14px; padding:14px 16px;
+          border-left:4px solid var(--accent-dark); }
+  .card h3 { margin:0 0 8px; font-size:13px; font-weight:800; color:var(--accent-dark);
+             text-transform:uppercase; letter-spacing:.6px; }
   .row { display:flex; justify-content:space-between; padding:5px 0;
          border-bottom:1px dashed var(--line); font-size:15px; gap:12px; }
   .row:last-child { border-bottom:none; }
   .label { color:var(--muted); }
-  .val { font-weight:700; text-align:right; }
-  .val.empty { color:#c9c1b5; font-weight:400; }
+  .val { font-weight:700; text-align:right; color:var(--accent-dark); }
+  .val.empty { color:#c5b8e0; font-weight:400; }
   .sec { font-size:12px; color:var(--accent); font-weight:700; text-transform:uppercase;
          letter-spacing:.4px; margin:10px 0 2px; }
   .net { margin-top:8px; font-size:13px; color:var(--muted); font-style:italic; }
-  .muted-empty { color:#c9c1b5; font-size:14px; }
+  .muted-empty { color:#c5b8e0; font-size:14px; }
 
   .controls { text-align:center; margin-top:14px; }
-  .btn { background:none; border:1px solid var(--line); color:var(--muted);
-         padding:8px 16px; border-radius:20px; font-size:13px; cursor:pointer; }
-  .hint { font-size:12px; color:#b3aa9c; text-align:center; margin-top:18px; line-height:1.5; }
+  .btn { background:#FFF0F3; border:1px solid #F5A8BA; color:#C0364F;
+         padding:8px 20px; border-radius:20px; font-size:13px; cursor:pointer;
+         transition:background .2s,border-color .2s,color .2s; }
+  .btn:hover { background:#FFD6DF; border-color:#C0364F; }
+  .hint { font-size:12px; color:var(--muted); text-align:center; margin-top:18px; line-height:1.5; }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>ग्यारह दास</h1>
-    <div class="sub">पहले 1000 दिनों का आवाज़ साथी &middot; रूपा देवी के साथ</div>
+    <h1>ग्यारह दास — रूपा देवी</h1>
+    <img class="header-banner" src="banner.svg" alt="ग्यारह दास — पहले 1000 दिनों का आवाज़ साथी" />
   </header>
 
   <div id="status" class="status">शुरू करने के लिए बटन दबाएं</div>
@@ -319,8 +334,9 @@ async function start(){
         audio:{
           input:{ format:{ type:"audio/pcm", rate:24000 },
                   turn_detection:{ type:"server_vad",
-                    silence_duration_ms:vad.silence_duration_ms??700,
-                    threshold:vad.threshold??0.7 },
+                    silence_duration_ms:vad.silence_duration_ms??800,
+                    threshold:vad.threshold??0.85,
+                    prefix_padding_ms:vad.prefix_padding_ms??200 },
                   transcription:{ ...(cfg.transcription||{ model:"whisper-1", language:"hi" }) } },
           output:{ format:{ type:"audio/pcm", rate:24000 }, voice:cfg.voice||"marin" }
         },
