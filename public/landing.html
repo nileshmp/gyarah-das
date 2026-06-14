@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gyarah Das — Choose Language</title>
+<style>
+  :root {
+    --bg:#faf7f2; --card:#fff; --accent:#b5651d; --accent-dark:#8c4a12;
+    --muted:#7a7368; --line:#ece5da;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg);
+         color:#2b2620; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .wrap { width:100%; max-width:420px; padding:28px 22px 40px; text-align:center; }
+  h1 { margin:0; font-size:30px; color:var(--accent-dark); }
+  .sub { margin-top:6px; font-size:15px; color:var(--muted); }
+  .ask { margin:28px 0 18px; font-size:16px; color:#2b2620; font-weight:600; }
+  .langs { display:flex; flex-direction:column; gap:14px; }
+  .lang { display:block; text-decoration:none; background:var(--card); border:1px solid var(--line);
+          border-radius:14px; padding:18px 20px; color:#2b2620; box-shadow:0 4px 12px rgba(140,74,18,.08);
+          transition:transform .12s, box-shadow .2s, border-color .2s; }
+  .lang:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(140,74,18,.16); border-color:var(--accent); }
+  .lang .name { font-size:22px; font-weight:700; color:var(--accent-dark); }
+  .lang .note { font-size:13px; color:var(--muted); margin-top:3px; }
+  .hint { font-size:12px; color:#b3aa9c; margin-top:24px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Gyarah Das</h1>
+    <div class="sub">Voice companion for the first 1000 days · with Rupa Devi</div>
+
+    <div class="ask">Please choose your language &middot; अपनी भाषा चुनें</div>
+    <div class="langs">
+      <a class="lang" href="/Hindi">
+        <div class="name">हिंदी &middot; Hindi</div>
+        <div class="note">बातचीत हिंदी में शुरू करें</div>
+      </a>
+      <a class="lang" href="/English">
+        <div class="name">English</div>
+        <div class="note">Start the conversation in English</div>
+      </a>
+    </div>
+
+    <div class="hint">Use Google Chrome and allow the microphone. Headphones are recommended.</div>
+  </div>
+</body>
+</html>

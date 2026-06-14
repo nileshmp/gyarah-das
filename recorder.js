@@ -134,7 +134,18 @@ export async function finalize(rec, SAFETY_NET, dataDir) {
   if (rec.transcript.length === 0 && rec.mother.length === 0) return null; // nothing happened
 
   const vkey = (rec.profile.village || "").toLowerCase().replace(/[^a-z]/g, "");
-  const villageKey = Object.keys(SAFETY_NET).find((k) => vkey.includes(k));
+  const STOP = new Set(["phc","chc","primary","health","centre","center","community","district","hospital","nagar","clinic"]);
+  // Match the village name, or a facility town (Saifni/Shahabad/Rampur) that serves it.
+  const villageKey = Object.keys(SAFETY_NET).find((k) => {
+    if (vkey.includes(k)) return true;
+    const fac = SAFETY_NET[k].facilities || {};
+    for (const fk in fac) {
+      for (const t of (fac[fk].name || "").toLowerCase().match(/[a-z]+/g) || []) {
+        if (t.length >= 4 && !STOP.has(t) && vkey.includes(t)) return true;
+      }
+    }
+    return false;
+  });
   const dir = villageKey ? SAFETY_NET[villageKey] : null;
   const contactsShared = rec.contacts.map((c) => {
     const s = dir && dir.stakeholders[c.stakeholder];
