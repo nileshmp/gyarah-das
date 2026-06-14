@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gyarah Das — रूपा देवी (हिंदी)</title>
+<style>
+  :root {
+    --bg:#faf7f2; --card:#fff; --accent:#b5651d; --accent-dark:#8c4a12;
+    --agent:#2e7d5b; --user:#3a4a6b; --muted:#7a7368; --line:#ece5da;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg);
+         color:#2b2620; min-height:100vh; display:flex; justify-content:center; }
+  .app { width:100%; max-width:560px; padding:20px 18px 40px; }
+  header { text-align:center; margin-bottom:14px; }
+  header h1 { margin:0; font-size:26px; color:var(--accent-dark); }
+  header .sub { margin-top:4px; font-size:14px; color:var(--muted); }
+  .status { text-align:center; font-size:15px; min-height:24px; margin:10px 0 16px;
+            color:var(--muted); font-weight:600; }
+  .status.listening { color:var(--accent); }
+  .status.speaking  { color:var(--agent); }
+  .status.error     { color:#c62828; }
+
+  .mic { display:block; margin:0 auto 18px; width:120px; height:120px; border-radius:50%;
+         border:none; background:var(--accent); color:#fff; font-size:16px; font-weight:700;
+         cursor:pointer; box-shadow:0 6px 18px rgba(181,101,29,.35);
+         transition:transform .15s,background .2s; }
+  .mic:active { transform:scale(.96); }
+  .mic:disabled { opacity:.55; cursor:default; }
+  .mic.live { background:#c62828; animation:pulse 1.4s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(198,40,40,.45);} 70%{box-shadow:0 0 0 18px rgba(198,40,40,0);} 100%{box-shadow:0 0 0 0 rgba(198,40,40,0);} }
+
+  .transcript { background:var(--card); border:1px solid var(--line); border-radius:14px;
+                padding:14px; min-height:150px; max-height:40vh; overflow-y:auto; }
+  .msg { margin:10px 0; line-height:1.4; font-size:16px; }
+  .msg .who { font-weight:700; font-size:13px; display:block; margin-bottom:2px; }
+  .msg.agent .who { color:var(--agent); }
+  .msg.user  .who { color:var(--user); }
+  .msg.user  { text-align:right; }
+  .msg.user.interim, .msg.agent.interim { opacity:.6; }
+
+  .card { margin-top:16px; background:var(--card); border:1px solid var(--line);
+          border-radius:14px; padding:14px 16px; }
+  .card h3 { margin:0 0 8px; font-size:14px; color:var(--accent-dark);
+             text-transform:uppercase; letter-spacing:.5px; }
+  .row { display:flex; justify-content:space-between; padding:5px 0;
+         border-bottom:1px dashed var(--line); font-size:15px; gap:12px; }
+  .row:last-child { border-bottom:none; }
+  .label { color:var(--muted); }
+  .val { font-weight:700; text-align:right; }
+  .val.empty { color:#c9c1b5; font-weight:400; }
+  .sec { font-size:12px; color:var(--accent); font-weight:700; text-transform:uppercase;
+         letter-spacing:.4px; margin:10px 0 2px; }
+  .net { margin-top:8px; font-size:13px; color:var(--muted); font-style:italic; }
+  .muted-empty { color:#c9c1b5; font-size:14px; }
+
+  .controls { text-align:center; margin-top:14px; }
+  .btn { background:none; border:1px solid var(--line); color:var(--muted);
+         padding:8px 16px; border-radius:20px; font-size:13px; cursor:pointer; }
+  .hint { font-size:12px; color:#b3aa9c; text-align:center; margin-top:18px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Gyarah Das</h1>
+    <div class="sub">पहले 1000 दिनों की वाणी साथी &middot; रूपा देवी के साथ</div>
+  </header>
+
+  <div id="status" class="status">शुरू करने के लिए गोले को दबाएँ</div>
+  <button id="mic" class="mic">शुरू करें</button>
+
+  <div id="transcript" class="transcript"></div>
+
+  <div class="card">
+    <h3>लाभार्थी का विवरण</h3>
+    <div class="row"><span class="label">नाम</span><span id="p-name" class="val empty">—</span></div>
+    <div class="row"><span class="label">उम्र</span><span id="p-age" class="val empty">—</span></div>
+    <div class="row"><span class="label">मोबाइल</span><span id="p-mobile" class="val empty">—</span></div>
+    <div class="row"><span class="label">गाँव</span><span id="p-village" class="val empty">—</span></div>
+    <div id="net" class="net"></div>
+  </div>
+
+  <div class="card">
+    <h3>दर्ज की गई जानकारी</h3>
+    <div id="details"><div class="muted-empty">बातचीत आगे बढ़ने पर जानकारी यहाँ दिखेगी…</div></div>
+  </div>
+
+  <div class="card" id="contacts-card" style="display:none">
+    <h3>साझा किए गए संपर्क</h3>
+    <div id="contacts"></div>
+  </div>
+
+  <div class="controls"><button id="endBtn" class="btn">कॉल समाप्त करें</button></div>
+
+  <div class="hint">
+    कृपया Google Chrome का उपयोग करें और माइक्रोफ़ोन की अनुमति दें। हेडफ़ोन का उपयोग बेहतर रहेगा।<br>
+    बस सहज होकर बोलें — रूपा देवी समझ जाएँगी कि आपकी बात पूरी हो गई है।
+  </div>
+</div>
+
+<script type="module">
+/* ===========================================================================
+   Gyarah Das — OpenAI Realtime (GA) over a TOKENLESS RELAY.
+   Browser <-> our server (localhost) <-> OpenAI. The key stays on the server.
+   This file drives the FULL onboarding + first-trimester conversation.
+=========================================================================== */
+import { SAFETY_NET } from "./safety-net.js";
+
+// --- Rupa Devi's instructions: persona + the full Knowledge Base flow -------
+const INSTRUCTIONS = `
+आप रूपा देवी हैं, "ग्यारह दस" (Gyarah Das) कार्यक्रम की ओर से इंटीग्रेटेड कमांड एंड
+कंट्रोल सेंटर (ICCC), उत्तर प्रदेश से बात करने वाली एक गर्मजोशी भरी, देखभाल करने वाली
+वाणी साथी हैं। ग्यारह दस गर्भावस्था से लेकर बच्चे के पहले 1000 दिनों तक (बच्चे के दो साल
+का होने तक) माताओं की मदद करता है।
+
+हमेशा हिंदी में बोलें। एक भरोसेमंद बड़ी बहन या गाँव की सहयोगी की तरह बात करें — गर्मजोशी
+से, आदर से, सहानुभूति से, धैर्य से, बिना किसी आलोचना के। कभी भी कॉल-सेंटर एजेंट जैसी न
+लगें। सरल, रोज़मर्रा के शब्द इस्तेमाल करें; कठिन चिकित्सा शब्दों से बचें (जैसे "जाँच" कहें)।
+हर बार छोटा बोलें — एक या दो कोमल वाक्य। बीच-बीच में याद दिलाएँ: "मैं आपकी पूरी
+गर्भावस्था और आपके बच्चे के पहले 1000 दिनों में आपके साथ हूँ।"
+
+मुख्य नियम:
+- एक बार में सिर्फ़ एक ही सवाल पूछें, फिर रुककर सुनें। कई सवाल एक साथ न पूछें।
+- हर जवाब को गर्मजोशी से स्वीकारें ("बताने के लिए धन्यवाद", "यह जानना अच्छा लगा",
+  "मैं समझ गई", "आपकी गर्भावस्था की बहुत-बहुत बधाई")।
+- वे कभी भी रोक सकती हैं। सिर्फ़ तभी जब वे साफ़ कहें कि उन्हें बात नहीं करनी, वे व्यस्त हैं,
+  या रुकना चाहती हैं — तो गर्मजोशी से धन्यवाद दें, दोबारा कॉल करने को कहें, फिर end_call करें।
+- सुधार को स्वाभाविक रूप से संभालें (जैसे "नहीं, मेरी उम्र 24 है") और जानकारी अपडेट करें।
+- बातचीत एक सहारे जैसी लगे, सर्वे जैसी नहीं।
+- कभी भी जवाब न गढ़ें और न अंदाज़ा लगाएँ। अगर आपने जो सुना वह साफ़ नहीं है, खाली है,
+  सिर्फ़ शोर है, या जवाब के तौर पर तुक नहीं रखता, तो उसे उनका जवाब न मानें और कोई नाम
+  या जानकारी मनगढ़ंत न बनाएँ।
+- चुप्पी का इंतज़ाम सिस्टम करता है। अगर साफ़ जवाब न मिले, तो बस अपना एक सवाल एक बार
+  पूछें और फिर चुप रहकर इंतज़ार करें। सवाल दोबारा न दोहराएँ, "क्या आप हैं?" न पूछें, और
+  खुद से यह न मानें कि वे व्यस्त हैं और न खुद कॉल खत्म करें। सिस्टम 20 सेकंड इंतज़ार करता
+  है और अगर वे चुप रहें तो [SYSTEM] संदेश के ज़रिए आपको विदाई कहने और कॉल खत्म करने को
+  कहेगा। सिर्फ़ चुप्पी, शोर या अस्पष्ट बात सुनकर कभी end_call न करें।
+- जगह, सुविधाओं और हेल्पलाइन के बारे में सवालों का जवाब तुरंत दें — कॉल के किसी भी समय,
+  चाहे शुरुआती जानकारी लेते समय भी। अगर वे किसी जगह या सुविधा का ज़िक्र करें या पूछें
+  (जैसे "सैफनी"/Saifni, "शाहाबाद"/Shahabad, "रामपुर"/Rampur, "पीएचसी"/PHC, "सीएचसी"/CHC,
+  "अस्पताल", "जिला अस्पताल") या हेल्पलाइन के बारे में पूछें, तो अपनी संदर्भ जानकारी से
+  पहचानें और छोटे में बताएँ कि वह क्या है, कितनी दूर है, और किस काम आती है। PHC सैफनी,
+  CHC शाहाबाद और जिला अस्पताल रामपुर — ये अनवा (Anwa) गाँव की सेवा करने वाली स्वास्थ्य
+  सुविधाएँ हैं। कभी न कहें कि आप इन्हें नहीं जानतीं। एक-दो वाक्य में जवाब देकर, जहाँ बातचीत
+  रुकी थी वहीं से कोमलता से आगे बढ़ें। इन सवालों को बाद के लिए न टालें।
+
+टूल्स — बात करते-करते इनका उपयोग करें (टूल के नाम अंग्रेज़ी में ही रहेंगे):
+- update_profile(name|age|mobile|village): जैसे ही हर जानकारी मिले, तुरंत बुलाएँ।
+- lookup_village(village): गाँव जानने के तुरंत बाद बुलाएँ। टूल जो नाम लौटाए उनका उपयोग
+  स्थानीय सहयोग टीम का परिचय देते समय करें।
+- record_field(section, label, value): हर ठोस जानकारी के लिए बुलाएँ।
+- get_contact_number(stakeholder): सिर्फ़ तभी बुलाएँ जब वे किसी का नंबर माँगें, या जब
+  "क्या आप उनका संपर्क नंबर चाहेंगी?" का जवाब हाँ हो। जब तक उन्होंने नहीं माँगा और आपने
+  यह टूल नहीं बुलाया, कोई फ़ोन नंबर ज़ोर से न बोलें।
+- end_call(reason): जब बातचीत पूरी हो जाए या वे रुकना चाहें।
+
+महत्वपूर्ण: टूल को दिए जाने वाले मानों (जैसे village) में अंग्रेज़ी/रोमन वर्तनी का उपयोग करें,
+उदाहरण के लिए "Anwa", "Saifni" — ताकि निर्देशिका सही से मिल सके।
+
+संदर्भ जानकारी: इन निर्देशों के अंत में एक संदर्भ खंड जोड़ा गया है — कार्यक्रम, स्थानीय
+सहयोग टीम, पास की स्वास्थ्य सुविधाएँ और वे किस काम आती हैं, सरकारी योजनाएँ, हेल्पलाइन, और
+तिमाही ढाँचे के बारे में। उनके सवालों का स्वाभाविक रूप से जवाब देने के लिए इसका उपयोग करें।
+हेल्पलाइन 102 और 108 ज़ोर से बोली जा सकती हैं; किसी कार्यकर्ता का निजी फ़ोन नंबर कभी ज़ोर
+से न पढ़ें — वह सिर्फ़ माँगने पर get_contact_number से साझा करें।
+
+इस बातचीत को इसी क्रम में करें:
+
+भाग A — शुरुआती परिचय
+1. इन शब्दों से अभिवादन करें: "नमस्ते। मेरा नाम रूपा देवी है। मैं ICCC, उत्तर प्रदेश से
+   आपसे बात कर रही हूँ। ग्यारह दस में आपका स्वागत है। हम गर्भावस्था से लेकर बच्चे के दो
+   साल का होने तक माताओं की मदद करते हैं। क्या मैं आपसे कुछ मिनट बात कर सकती हूँ?"
+   सिर्फ़ तभी जब वे साफ़ कहें कि नहीं या वे व्यस्त हैं → गर्मजोशी से धन्यवाद दें, दोबारा कॉल
+   करने को कहें, end_call। अगर कुछ सुनाई न दे या अस्पष्ट हो, तो खत्म न करें — बस इंतज़ार करें।
+2. सहमति: "क्या मैं आपकी जानकारी ले सकती हूँ ताकि हम आपको व्यक्तिगत सहयोग दे सकें और सही
+   स्वास्थ्य व पोषण सेवाओं से जोड़ सकें?"
+   सिर्फ़ तभी जब वे साफ़ कहें नहीं → गर्मजोशी से धन्यवाद दें, end_call। हाँ → आगे बढ़ें।
+3. विवरण, एक-एक करके: पूरा नाम → उम्र → मोबाइल नंबर → वे किस गाँव में रहती हैं। हर
+   जानकारी मिलते ही update_profile बुलाएँ। गाँव जानने के तुरंत बाद lookup_village बुलाएँ।
+
+भाग B — वे कौन हैं
+4. "अपना विवरण साझा करने के लिए धन्यवाद। आपकी बेहतर मदद के लिए, क्या मैं जान सकती हूँ —
+   क्या आप इस समय गर्भवती हैं?"
+   - हाँ → भाग C पर जाएँ।
+   - नहीं → पूछें: "क्या आपका कोई बच्चा दो साल से छोटा है?"
+       - हाँ → भाग D पर जाएँ।
+       - नहीं → "धन्यवाद। इस समय ग्यारह दस गर्भावस्था के दौरान और बच्चे के दो साल का होने
+         तक माताओं की मदद करता है।" गर्मजोशी से धन्यवाद दें, end_call।
+
+भाग C — गर्भावस्था (तिमाही पता करें)
+5. "आपकी गर्भावस्था की बहुत-बहुत बधाई।" पूछें कि क्या उन्हें गर्भवती होने से पहले अपने
+   आख़िरी मासिक धर्म का पहला दिन याद है।
+   a) सही या अनुमानित तारीख पता हो — गर्भकाल, तिमाही और संभावित प्रसव तिथि (EDD) का अनुमान
+      लगाएँ। अगर सिर्फ़ अनुमानित हो: एक-एक करके कोमलता से पूछें — "आपका आख़िरी मासिक धर्म
+      किस महीने में था?" "वह महीने की शुरुआत, बीच, या अंत में था?" "क्या उस समय के आसपास कोई
+      त्योहार, पारिवारिक आयोजन, शादी, फ़सल का मौसम या कोई और याद रखने लायक मौका हुआ था?" —
+      उनके जवाब से तारीख का अंदाज़ा लगाएँ। फिर तिमाही और लगभग प्रसव तिथि बताएँ।
+   b) तारीख पता न हो — पूछें: "क्या किसी ANM, आशा कार्यकर्ता, डॉक्टर या अल्ट्रासाउंड ने
+      बताया है कि आपको कितने महीने का गर्भ है?" हाँ → उससे तिमाही और EDD तय करें, बताएँ,
+      आगे बढ़ें।
+   c) फिर भी पता न हो — "कोई बात नहीं। अभी आपके आख़िरी मासिक धर्म की तारीख या गर्भ के
+      महीनों के अनुमान के बिना मैं आपकी गर्भावस्था की अवस्था तय नहीं कर पाऊँगी। जब आपको किसी
+      ANM, आशा कार्यकर्ता, डॉक्टर या अल्ट्रासाउंड से यह जानकारी मिल जाए, तो कृपया ग्यारह दस
+      को दोबारा संपर्क करें ताकि मैं सही सहयोग दे सकूँ। धन्यवाद।" end_call।
+6. उन्हें तिमाही और लगभग EDD बताएँ। record_field("Pregnancy", "Current stage", जैसे
+   "First trimester — about 2 months") बुलाएँ और EDD भी record_field करें। तिमाही: पहली
+   = 0–3 महीने, दूसरी = 4–6 महीने, तीसरी = 7–9 महीने।
+   → भाग E (स्थानीय सहयोग) करें। भाग E के बाद:
+      - पहली तिमाही → भाग F पर जाएँ।
+      - दूसरी/तीसरी तिमाही → गर्मजोशी से कहें कि आप इस अवस्था की सही देखभाल के लिए
+        मार्गदर्शन देंगी और संपर्क में रहेंगी (विस्तृत मार्गदर्शन जोड़ा जा रहा है), फिर end_call।
+
+भाग D — छोटे बच्चे की माँ
+7. "आपकी बेहतर मदद के लिए मुझे आपके बच्चे की उम्र जाननी है। आपके बच्चे की जन्म तिथि क्या
+   है?" अगर तारीख न पता हो, तो महीनों में उम्र पूछें।
+   - 18 महीने से बड़ा → "जानकारी साझा करने के लिए धन्यवाद। इस समय ग्यारह दस में नया
+     पंजीकरण सिर्फ़ उन माताओं के लिए है जिनके बच्चे 18 महीने या उससे छोटे हैं। आपका बच्चा 18
+     महीने से बड़ा है, इसलिए मैं अभी नया पंजीकरण नहीं कर पाऊँगी। आपके समय के लिए धन्यवाद।"
+     end_call।
+   - 18 महीने या उससे कम → बच्चे की तिमाही (Q4–Q9) निकालें, अवस्था बताएँ,
+     record_field("Child", "Age / Quarter", जैसे "4 months — Quarter 5") बुलाएँ।
+   → भाग E (स्थानीय सहयोग) करें। फिर गर्मजोशी से कहें कि आप इस अवस्था के लिए मार्गदर्शन
+     देंगी और संपर्क में रहेंगी (विस्तृत मार्गदर्शन जोड़ा जा रहा है), फिर end_call।
+
+भाग E — उनकी स्थानीय सहयोग टीम का परिचय (पंजीकरण के तुरंत बाद ज़रूरी)
+8. "आपके गाँव के आधार पर, मैंने आपकी मदद के लिए उपलब्ध स्थानीय सहयोग टीम पहचान ली है।"
+   फिर हर एक का नाम लेकर परिचय दें — फ़ोन नंबर कभी ज़ोर से न पढ़ें:
+   - "आपकी आशा कार्यकर्ता, <name>, आपकी पहली संपर्क हैं — गर्भावस्था पंजीकरण, घर पर
+     मुलाक़ात, सलाह, सेवाओं से जोड़ने और रेफ़रल के लिए।"
+   - "आपकी आँगनवाड़ी कार्यकर्ता, <name>, पोषण सेवाओं, टेक होम राशन, और माँ के पोषण की सलाह
+     में मदद करती हैं।"
+   - "आपकी ANM, <name>, गर्भावस्था की जाँच, टीकाकरण, और माँ के स्वास्थ्य की जाँच करती हैं।"
+   - "आपके गाँव के पास की स्वास्थ्य सुविधाएँ: प्राथमिक स्वास्थ्य केंद्र — <PHC name>, लगभग
+     <distance>, <travel time>। सामुदायिक स्वास्थ्य केंद्र — <CHC name>, लगभग <distance>,
+     <travel time>। जिला अस्पताल — <DH name>, लगभग <distance>, <travel time>।"
+   - "आपके ग्राम साथी, <name>, स्थानीय सेवाओं तक पहुँचने में मदद कर सकते हैं। आपकी स्वयं
+     सहायता समूह (SHG) प्रतिनिधि, <name>, आपको सामुदायिक संसाधनों से जोड़ने में मदद कर
+     सकती हैं।"
+   - "आपात स्थिति के लिए: माँ और बच्चे को ले जाने के लिए एम्बुलेंस 102, और आपातकालीन चिकित्सा
+     के लिए 108। अगर एम्बुलेंस आने में देरी हो, तो एक स्थानीय स्वयंसेवक, <transport name>, भी
+     मदद कर सकते हैं।"
+   इस हिस्से का समापन: "इस सफ़र में आप अकेली नहीं हैं। ये लोग और सुविधाएँ आपकी पूरी
+   गर्भावस्था और आपके बच्चे के पहले 1000 दिनों में आपकी मदद के लिए मौजूद हैं। जब भी ज़रूरत हो,
+   मैं सही समय पर सही व्यक्ति से आपको जोड़ सकती हूँ। कृपया किसी भी समय मुझसे संपर्क करने में
+   संकोच न करें। मैं हर कदम पर आपके साथ हूँ।"
+   नंबर सिर्फ़ तभी साझा करें जब वे माँगें (तब get_contact_number उपयोग करें)।
+
+भाग F — पहली तिमाही की देखभाल (सिर्फ़ पहली तिमाही होने पर)
+शुरुआत: "इस समय आप अपनी गर्भावस्था की पहली तिमाही में हैं। इस अवस्था में अपनी गर्भावस्था का
+पंजीकरण कराना, नियमित जाँच शुरू करना, आयरन की गोलियाँ लेना, अच्छा पोषण लेना और उपलब्ध सेवाओं
+का लाभ लेना ज़रूरी है। मैं कुछ सवाल पूछना चाहूँगी ताकि समझ सकूँ कि आपकी सबसे अच्छी मदद कैसे करूँ।"
+
+इन्हें एक-एक विषय करके पूछें, हर जवाब को स्वीकारें और हर ठोस जानकारी के लिए record_field बुलाएँ:
+
+ (a) आशा और आँगनवाड़ी में गर्भावस्था पंजीकरण
+     "क्या आपने अपनी गर्भावस्था के बारे में अपनी आशा कार्यकर्ता और आँगनवाड़ी कार्यकर्ता को
+     बता दिया है?"
+     - हाँ → स्वीकारें, record_field, आगे बढ़ें।
+     - नहीं → "जल्दी पंजीकरण से आपको समय पर जाँच, पोषण सहयोग और दूसरे लाभ मिलते हैं।
+       आपकी आशा कार्यकर्ता <name> और आँगनवाड़ी कार्यकर्ता <name> हैं। वे आपको पंजीकरण में
+       मदद कर सकती हैं।" record_field (माँग: Pregnancy Registration, Anganwadi Registration)।
+
+ (b) गर्भावस्था की जाँच (ANC)
+     "क्या अब तक आपकी कोई गर्भावस्था जाँच हुई है?"
+     - हाँ → एक-एक करके पूछें और हर जवाब record_field करें: "आपकी जाँच कहाँ हुई — सरकारी
+       केंद्र में या निजी अस्पताल में?" "क्या आपका रक्तचाप (बीपी) मापा गया — सामान्य था,
+       ज़्यादा था, या नहीं मापा गया?" "क्या पेट की जाँच की गई?" "क्या आपका वज़न मापा गया?"
+       "क्या खून (हीमोग्लोबिन) की जाँच हुई? आपको बताया गया कि वह सामान्य है, खून की कमी है,
+       या बहुत ज़्यादा खून की कमी है?" "क्या ANM या डॉक्टर ने किसी परेशानी या स्वास्थ्य चिंता
+       के बारे में बताया?"
+     - नहीं → "जल्द से जल्द अपनी पहली गर्भावस्था जाँच कराना ज़रूरी है। आपकी आशा कार्यकर्ता
+       <name> और आँगनवाड़ी कार्यकर्ता <name> आपको अगले ग्राम स्वास्थ्य स्वच्छता एवं पोषण
+       दिवस (VHSND) के बारे में बताकर मदद कर सकती हैं। क्या आप उनका संपर्क नंबर चाहेंगी?"
+       हाँ → ASHA और AWW के लिए get_contact_number बुलाएँ। record_field (माँग: First ANC)।
+
+ (c) आयरन और फ़ोलिक एसिड (IFA) की गोलियाँ
+     "क्या आपको अपनी आशा कार्यकर्ता, ANM, या आँगनवाड़ी कार्यकर्ता से आयरन और फ़ोलिक एसिड
+     की गोलियाँ मिली हैं?"
+     - हाँ → "लगभग कितनी गोलियाँ मिली हैं?" "क्या आप उन्हें बताए अनुसार ले रही हैं?" - अगर
+       नियमित नहीं ले रहीं → "क्या मैं कारण जान सकती हूँ? जैसे — क्या इनसे कोई परेशानी होती है
+       जैसे काला मल, जी मिचलाना या उल्टी? या आप लेना भूल जाती हैं? या आपको लगता है कि आप
+       स्वस्थ हैं और इनकी ज़रूरत नहीं? या दवा का डर है?" कारण को कोमलता से स्वीकारें। समझाएँ:
+       "आयरन की गोलियाँ गर्भावस्था में ज़रूरी हैं — ये खून की कमी से बचाती हैं और आपके बच्चे
+       की अच्छी वृद्धि में मदद करती हैं।" record_field (न लेने का कारण)।
+     - नहीं → "आयरन की गोलियाँ गर्भावस्था की देखभाल का ज़रूरी हिस्सा हैं। आपकी ANM, <name>,
+       इन्हें दिलाने में मदद कर सकती हैं। क्या आप उनका संपर्क नंबर चाहेंगी?" हाँ → ANM के लिए
+       get_contact_number। record_field (माँग: IFA Supply)।
+
+ (d) टीटी का टीका (TT)
+     "क्या इस गर्भावस्था में आपको अपना पहला टीटी का टीका लग चुका है?"
+     - हाँ → "यह जानकर अच्छा लगा।" लगभग तारीख पूछें और record_field करें।
+     - नहीं → "टीटी का टीका गर्भावस्था में माँ और बच्चे दोनों की रक्षा करता है। आपकी ANM,
+       <name>, आपको अगले टीकाकरण सत्र के बारे में बता सकती हैं।" record_field (माँग: TT Vaccination)।
+
+ (e) आराम
+     "क्या आप दोपहर में पर्याप्त आराम कर पाती हैं?"
+     - हाँ → स्वीकारें और record_field।
+     - नहीं → "गर्भावस्था में पर्याप्त आराम आपके और आपके बच्चे के विकास के लिए ज़रूरी है।
+       कृपया दिन में जब भी हो सके आराम करने की कोशिश करें।" record_field।
+
+ (f) एक अतिरिक्त भोजन
+     "क्या आप गर्भावस्था में हर दिन एक अतिरिक्त भोजन ले रही हैं?"
+     - हाँ → स्वीकारें और record_field।
+     - नहीं → "गर्भावस्था में आपके शरीर को अतिरिक्त पोषण चाहिए क्योंकि आप अपने साथ अपने
+       बढ़ते बच्चे का भी पोषण कर रही हैं। कृपया हर दिन एक अतिरिक्त पौष्टिक भोजन शामिल करने की
+       कोशिश करें।" record_field।
+
+ (g) आँगनवाड़ी पंजीकरण और टेक होम राशन (THR)
+     पहला सवाल: "क्या आपने पास की आँगनवाड़ी केंद्र में पंजीकरण कराया है?"
+     - हाँ → "क्या आपको टेक होम राशन (THR) मिला है?" - हाँ → दोनों स्वीकारें और
+       record_field। - नहीं → "आपकी आँगनवाड़ी कार्यकर्ता, <name>, आपको टेक होम राशन और
+       पोषण सेवाएँ दिलाने में मदद कर सकती हैं। क्या आप उनका संपर्क नंबर चाहेंगी?" हाँ → AWW के
+       लिए get_contact_number। record_field (माँग: THR Access)।
+     - पंजीकृत नहीं → "आँगनवाड़ी केंद्र में पंजीकरण से आपको टेक होम राशन और पोषण सहयोग मिलता
+       है। आपकी आँगनवाड़ी कार्यकर्ता <name> हैं। क्या आप उनका संपर्क नंबर चाहेंगी?" हाँ → AWW
+       के लिए get_contact_number। record_field (माँग: Anganwadi Registration, THR Access)।
+
+समापन (सभी पहली तिमाही के विषयों के बाद):
+"<Mother Name> जी, आज मुझसे बात करने के लिए धन्यवाद। याद रखिए कि आपकी आशा कार्यकर्ता,
+आँगनवाड़ी कार्यकर्ता, ANM, और पास की स्वास्थ्य सुविधाएँ हमेशा आपकी मदद के लिए मौजूद हैं। इस
+सफ़र में आप अकेली नहीं हैं। मैं आपकी पूरी गर्भावस्था में आपके साथ रहूँगी और सही समय पर सही सेवा
+से आपको जोड़ने में मदद करूँगी। अपना और अपने बच्चे का ध्यान रखिए। नमस्ते।"
+फिर end_call करें।
+
+SYSTEM PROMPTS: आपको कभी-कभी "[SYSTEM: ...]" से शुरू होने वाला संदेश मिल सकता है। यह ऐप
+का आंतरिक निर्देश है — "[SYSTEM]" को कभी ज़ोर से न पढ़ें और न इसका ज़िक्र करें। बस उसके अंदर
+दिए निर्देश का पालन करें (यह सिर्फ़ तब आएगा जब माँ चुप रहें, और आपको एक छोटी विदाई कहकर कॉल
+खत्म करने को कहेगा)।
+
+अब अभिवादन से शुरुआत करें।
+`;
+
+// --- Tools ------------------------------------------------------------------
+const TOOLS = [
+  { type:"function", name:"update_profile",
+    description:"Save a beneficiary detail as soon as it is known. Send only the field(s) just learned.",
+    parameters:{ type:"object", properties:{
+      name:{type:"string"}, age:{type:"string"}, mobile:{type:"string"}, village:{type:"string"} } } },
+  { type:"function", name:"lookup_village",
+    description:"Look up the village in the local safety-net directory. Returns local worker names and nearby facilities (no phone numbers).",
+    parameters:{ type:"object", properties:{ village:{type:"string"} }, required:["village"] } },
+  { type:"function", name:"record_field",
+    description:"Record one concrete piece of information the mother shared, for her care record.",
+    parameters:{ type:"object", properties:{
+      section:{type:"string", description:"e.g. Pregnancy, First Trimester Care, Nutrition"},
+      label:{type:"string"}, value:{type:"string"} }, required:["label","value"] } },
+  { type:"function", name:"get_contact_number",
+    description:"Get a stakeholder's phone number. Call ONLY when the mother asks for a contact number.",
+    parameters:{ type:"object", properties:{
+      stakeholder:{type:"string", enum:["ASHA","ANM","AWW","gramSathi","shg","transport"]} },
+      required:["stakeholder"] } },
+  { type:"function", name:"end_call",
+    description:"End the conversation gracefully after a goodbye, or when she declines or wants to stop.",
+    parameters:{ type:"object", properties:{ reason:{type:"string"} } } },
+];
+
+// --- DOM --------------------------------------------------------------------
+const $ = (id)=>document.getElementById(id);
+const micBtn=$("mic"), statusEl=$("status"), transcript=$("transcript"), endBtn=$("endBtn"),
+      detailsEl=$("details"), contactsCard=$("contacts-card"), contactsEl=$("contacts");
+
+let ws=null, micStream=null, captureCtx=null, processor=null, playCtx=null;
+let connected=false, ending=false, gotError=false;
+let playQueue=[], nextPlayTime=0;
+let detailCount=0;
+
+// --- Silence / no-response handler ------------------------------------------
+// Simple rule: after Rupa Devi asks something, wait 20 seconds of real silence.
+// If the mother gives no clear answer, say one short goodbye and end the call.
+// NO repeating the question — ask once, wait, then leave.
+const SILENCE_MS = 20000;
+let silenceTimer = null;
+let pendingEnd = false;  // true once end_call tool fires — prevents new timers/nudges
+let endRequested = false; // end_call fired; drain audio at response.done, then hang up
+
+function clearSilenceTimer(){ if(silenceTimer){ clearTimeout(silenceTimer); silenceTimer=null; } }
+
+// Arm the silence wait. The 20-second countdown must begin only AFTER Rupa Devi
+// has finished SPEAKING (her audio plays for several seconds after the text is
+// generated), so we add the remaining playback time before the wait starts.
+function startSilenceTimer(){
+  if(ending || pendingEnd || !connected) return;
+  clearSilenceTimer();
+  const remainingMs = playCtx ? Math.max(0, (nextPlayTime - playCtx.currentTime) * 1000) : 0;
+  silenceTimer = setTimeout(onSilence, remainingMs + SILENCE_MS);
+}
+
+function onSilence(){
+  silenceTimer = null;
+  if(ending || pendingEnd || !connected) return;
+  // No answer within the wait window — say a brief goodbye and leave. No repeat.
+  injectSystemNudge(
+    "The mother has not answered. Do NOT repeat the question. Warmly say a brief " +
+    "goodbye — for example: 'It seems you may be busy right now. Thank you for your " +
+    "time. Please call back whenever you are ready. Namaste.' Then call end_call."
+  );
+}
+
+function injectSystemNudge(text){
+  send({ type:"conversation.item.create",
+    item:{ type:"message", role:"user",
+           content:[{ type:"input_text", text:"[SYSTEM: "+text+"]" }] } });
+  send({ type:"response.create" });
+}
+
+// Wait until the audio playback queue is truly empty, then end the call.
+// Polls every 300 ms so the goodbye sentence always finishes before we hang up.
+function waitForAudioThenEnd(){
+  if(!pendingEnd) return;
+  const audioStillPlaying = playQueue.length > 0 ||
+    (playCtx && nextPlayTime > playCtx.currentTime + 0.15);
+  if(audioStillPlaying){
+    setTimeout(waitForAudioThenEnd, 300);
+  } else {
+    setTimeout(endCall, 600); // 600 ms buffer after last audio frame
+  }
+}
+
+// --- UI helpers -------------------------------------------------------------
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className="status"+(cls?" "+cls:""); }
+function setProfile(key,val){ const el=$("p-"+key); if(el){ el.textContent=val; el.classList.remove("empty"); } }
+let agentBubble=null;
+function bubble(who,cls){ const d=document.createElement("div"); d.className="msg "+cls;
+  d.innerHTML=`<span class="who">${who}</span><span class="txt"></span>`;
+  transcript.appendChild(d); transcript.scrollTop=transcript.scrollHeight; return d; }
+function setBubbleText(d,t){ d.querySelector(".txt").textContent=t; transcript.scrollTop=transcript.scrollHeight; }
+
+let lastSection=null;
+function addDetail(section, label, value){
+  if(detailCount===0) detailsEl.innerHTML="";
+  detailCount++;
+  if(section && section!==lastSection){
+    const s=document.createElement("div"); s.className="sec"; s.textContent=section;
+    detailsEl.appendChild(s); lastSection=section;
+  }
+  const r=document.createElement("div"); r.className="row";
+  r.innerHTML=`<span class="label"></span><span class="val"></span>`;
+  r.children[0].textContent=label; r.children[1].textContent=value;
+  detailsEl.appendChild(r);
+}
+function addContact(role,name,mobile){
+  contactsCard.style.display="block";
+  const r=document.createElement("div"); r.className="row";
+  r.innerHTML=`<span class="label"></span><span class="val"></span>`;
+  r.children[0].textContent=role+(name?" — "+name:""); r.children[1].textContent=mobile;
+  contactsEl.appendChild(r);
+}
+
+// --- Audio helpers ----------------------------------------------------------
+function downsample(buf, inRate, outRate){
+  if(outRate>=inRate) return buf;
+  const ratio=inRate/outRate, newLen=Math.round(buf.length/ratio), out=new Float32Array(newLen);
+  let o=0,i=0;
+  while(o<newLen){ const next=Math.round((o+1)*ratio); let sum=0,c=0;
+    for(; i<next && i<buf.length; i++){ sum+=buf[i]; c++; } out[o++]= c? sum/c : 0; }
+  return out;
+}
+function floatTo16BitPCM(f32){
+  const out=new Int16Array(f32.length);
+  for(let i=0;i<f32.length;i++){ const s=Math.max(-1,Math.min(1,f32[i])); out[i]= s<0? s*0x8000 : s*0x7FFF; }
+  return out.buffer;
+}
+function b64FromBuf(buf){
+  const bytes=new Uint8Array(buf); let bin=""; const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+  return btoa(bin);
+}
+function bufFromB64(b64){
+  const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function enqueueAudio(b64){
+  const int16=new Int16Array(bufFromB64(b64));
+  const f32=new Float32Array(int16.length);
+  for(let i=0;i<int16.length;i++) f32[i]=int16[i]/0x8000;
+  const ab=playCtx.createBuffer(1, f32.length, 24000); ab.getChannelData(0).set(f32);
+  const src=playCtx.createBufferSource(); src.buffer=ab; src.connect(playCtx.destination);
+  const now=playCtx.currentTime; if(nextPlayTime<now) nextPlayTime=now;
+  src.start(nextPlayTime); nextPlayTime+=ab.duration;
+  playQueue.push(src); src.onended=()=>{ const i=playQueue.indexOf(src); if(i>=0) playQueue.splice(i,1); };
+}
+function stopPlayback(){ playQueue.forEach(s=>{ try{s.stop();}catch(_){} }); playQueue=[]; nextPlayTime=0; }
+
+// --- Tools ------------------------------------------------------------------
+// Generic facility words that are NOT place names — never match a village on these.
+const FACILITY_STOPWORDS = new Set(["phc","chc","primary","health","centre",
+  "center","community","district","hospital","nagar","clinic"]);
+
+function villageDir(name){
+  const norm=(name||"").toLowerCase().replace(/[^a-z]/g,"");
+  if(!norm) return null;
+  for(const k in SAFETY_NET){
+    if(norm.includes(k)) return SAFETY_NET[k];                 // village name itself
+    // Also recognise the facility TOWNS that serve this village (Saifni, Shahabad,
+    // Rampur) so mentioning a facility place still maps back to the directory.
+    const fac = SAFETY_NET[k].facilities || {};
+    for(const fk in fac){
+      const tokens = (fac[fk].name || "").toLowerCase().match(/[a-z]+/g) || [];
+      for(const t of tokens){
+        if(t.length >= 4 && !FACILITY_STOPWORDS.has(t) && norm.includes(t)) return SAFETY_NET[k];
+      }
+    }
+  }
+  return null;
+}
+function runTool(name,args){
+  if(name==="update_profile"){
+    ["name","age","mobile","village"].forEach(k=>{ if(args[k]) setProfile(k,args[k]); });
+    return { ok:true };
+  }
+  if(name==="lookup_village"){
+    const dir=villageDir(args.village);
+    if(dir){
+      setProfile("village",dir.village);
+      $("net").textContent="✓ "+dir.village+" की स्थानीय सहयोग टीम मिल गई (नाम उपलब्ध; नंबर सिर्फ़ माँगने पर)।";
+      // Names + facilities only — NO phone numbers
+      const s=dir.stakeholders;
+      return { found:true, village:dir.village,
+        workers:{ ASHA:s.ASHA.name, ANM:s.ANM.name, AWW:s.AWW.name,
+                  gramSathi:s.gramSathi.name, shg:s.shg.name, transport:s.transport.name },
+        facilities:dir.facilities };
+    }
+    return { found:false };
+  }
+  if(name==="record_field"){
+    addDetail(args.section||"General", args.label||"", args.value||"");
+    return { ok:true };
+  }
+  if(name==="get_contact_number"){
+    const dir=villageDir($("p-village").textContent);
+    const s=dir && dir.stakeholders[args.stakeholder];
+    if(s){ addContact(s.role, s.name, s.mobile); return { name:s.name, role:s.role, mobile:s.mobile }; }
+    return { found:false };
+  }
+  if(name==="end_call"){
+    // Do NOT start draining now — the goodbye audio may not be enqueued yet.
+    // Mark it; response.done will drain the full audio, then hang up.
+    setStatus("समाप्त कर रहे हैं…",""); pendingEnd=true; endRequested=true; clearSilenceTimer();
+    return { ok:true };
+  }
+  return { ok:false };
+}
+
+// --- Events from OpenAI (relayed) -------------------------------------------
+function handleEvent(ev){
+  switch(ev.type){
+    case "response.output_audio.delta":
+      if(ev.delta) enqueueAudio(ev.delta);
+      setStatus("रूपा देवी बोल रही हैं…","speaking"); break;
+    case "response.output_audio_transcript.delta":
+      if(!agentBubble) agentBubble=bubble("रूपा देवी","agent interim");
+      setBubbleText(agentBubble,(agentBubble.querySelector(".txt").textContent||"")+ev.delta); break;
+    case "response.output_audio_transcript.done":
+      if(agentBubble){ agentBubble.classList.remove("interim"); agentBubble=null; }
+      break;
+    case "response.done":
+      // Her whole turn is done and ALL audio for it is now enqueued.
+      if(endRequested){
+        // End requested: let the full goodbye finish playing, then hang up.
+        waitForAudioThenEnd();
+      } else {
+        // Arm the silence wait, which only starts counting once audio finishes.
+        startSilenceTimer();
+      }
+      break;
+
+    case "conversation.item.input_audio_transcription.completed": {
+      const text=(ev.transcript||"").trim();
+      // Ignore noise/hallucinations: empty, or text containing a non-Latin
+      // script (Korean/CJK/Cyrillic/Arabic/Devanagari/etc.) — that only ever
+      // comes from mis-transcribed noise; treat it as if she said nothing.
+      // Hindi build: Devanagari (U+0900-U+097F) is VALID \u2014 the range is split
+      // around it so Hindi passes; other foreign scripts (noise) are still dropped.
+      const FOREIGN=/[\u0370-\u08FF\u0980-\u1CFF\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/;
+      if(text && !FOREIGN.test(text)){
+        const b=bubble("आप","user"); setBubbleText(b,text);
+        clearSilenceTimer();   // mother genuinely spoke — cancel the silence wait
+      }
+      break;
+    }
+
+    case "input_audio_buffer.speech_started":
+      // Barge-in: let the mother interrupt and stop Rupa Devi's audio — EXCEPT
+      // while we are delivering the final goodbye. Once end_call has fired, the
+      // goodbye must finish; echo or stray noise must not cut it off and hang up.
+      if(!pendingEnd){ stopPlayback(); setStatus("सुन रही हूँ…","listening"); }
+      break;
+      // NOTE: do NOT clear silence timer here — speech_started fires on mic echo too.
+      // Only a confirmed transcription (above) should cancel the 9-second wait.
+
+    case "response.function_call_arguments.done": {
+      let args={}; try{ args=JSON.parse(ev.arguments||"{}"); }catch(_){}
+      const result=runTool(ev.name,args);
+      send({ type:"conversation.item.create",
+        item:{ type:"function_call_output", call_id:ev.call_id, output:JSON.stringify(result) } });
+      // Don't start a new response once we're ending — it would race the goodbye.
+      if(ev.name!=="end_call" && !endRequested) send({ type:"response.create" });
+      break;
+    }
+
+    case "error":
+      console.error("Realtime error:",ev.error); gotError=true;
+      setStatus("त्रुटि: "+(ev.error?.message||"कंसोल देखें"),"error"); break;
+  }
+}
+function send(obj){ if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+
+// --- Start / connect --------------------------------------------------------
+async function start(){
+  if(connected) return;
+  micBtn.disabled=true; micBtn.textContent="…"; setStatus("जुड़ रहे हैं…");
+  try{
+    const cfg=await (await fetch("/config")).json();
+    let knowledge=""; try{ knowledge=await (await fetch("/knowledge-hi")).text(); }catch(_){}
+    captureCtx=new (window.AudioContext||window.webkitAudioContext)();
+    playCtx   =new (window.AudioContext||window.webkitAudioContext)();
+    await captureCtx.resume(); await playCtx.resume();
+    micStream=await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+
+    const wsUrl=(location.protocol==="https:"?"wss":"ws")+"://"+location.host+"/realtime";
+    ws=new WebSocket(wsUrl);
+
+    ws.onopen=()=>{
+      // Server-side background-noise reduction (fan, traffic, room noise). Mode comes
+      // from /config (default far_field). "off"/"none" omits it entirely.
+      const nrMode=(cfg.noiseReduction||"far_field").toLowerCase();
+      const noiseReduction=(nrMode==="off"||nrMode==="none")?null:{ type:nrMode };
+      send({ type:"session.update", session:{
+        type:"realtime",
+        output_modalities:["audio"],
+        instructions:INSTRUCTIONS + (knowledge ? "\n\n===== REFERENCE KNOWLEDGE =====\n"+knowledge : ""),
+        audio:{
+          input:{ format:{ type:"audio/pcm", rate:24000 },
+                  // Remove steady background noise before it reaches VAD/transcription.
+                  ...(noiseReduction ? { noise_reduction:noiseReduction } : {}),
+                  // Higher threshold + padding so room noise / breaths don't trip a turn.
+                  turn_detection:{ type:"server_vad", threshold:0.7,
+                                   prefix_padding_ms:300, silence_duration_ms:800 },
+                  // Pin transcription to English so it can't hallucinate foreign text.
+                  // The prompt biases the recogniser toward local place/role names
+                  // so rural names (Saifni, Shahabad, Rampur, Anwa) aren't misheard.
+                  transcription:{ model:"gpt-4o-mini-transcribe", language:"hi",
+                    prompt:"ग्यारह दस, रूपा देवी, अनवा, सैफनी, शाहाबाद, रामपुर, आशा, "+
+                      "एएनएम, आँगनवाड़ी, ग्राम साथी, टेक होम राशन, आयरन की गोली, टीटी का टीका। "+
+                      "Gyarah Das, Rupa Devi, Anwa, Saifni, Shahabad, Rampur, PHC, CHC, "+
+                      "ASHA, ANM, Anganwadi." } },
+          output:{ format:{ type:"audio/pcm", rate:24000 }, voice:cfg.voice||"marin" }
+        },
+        tools:TOOLS, tool_choice:"auto"
+      }});
+      send({ type:"response.create" });
+      startMicStreaming();
+      connected=true; micBtn.disabled=false; micBtn.textContent="चालू"; micBtn.classList.add("live");
+      setStatus("जुड़ गए — नमस्ते कहिए!","listening");
+    };
+    ws.onmessage=(e)=>{ try{ handleEvent(JSON.parse(e.data)); }catch(_){} };
+    ws.onerror =()=>{ if(!gotError) setStatus("कनेक्शन त्रुटि — क्या सर्वर चल रहा है?","error"); };
+    ws.onclose =(e)=>{ console.log("WS closed",e.code,e.reason);
+      if(!ending && !gotError) setStatus("जवाब से पहले कनेक्शन बंद हो गया — सर्वर टर्मिनल देखें।","error"); };
+  }catch(err){
+    console.error(err); setStatus("शुरू नहीं हो सका: "+err.message,"error");
+    micBtn.disabled=false; micBtn.textContent="शुरू करें";
+  }
+}
+
+function startMicStreaming(){
+  const source=captureCtx.createMediaStreamSource(micStream);
+  processor=captureCtx.createScriptProcessor(4096,1,1);
+  const mute=captureCtx.createGain(); mute.gain.value=0;
+  source.connect(processor); processor.connect(mute); mute.connect(captureCtx.destination);
+  processor.onaudioprocess=(e)=>{
+    if(!ws || ws.readyState!==WebSocket.OPEN) return;
+    const down=downsample(e.inputBuffer.getChannelData(0), captureCtx.sampleRate, 24000);
+    send({ type:"input_audio_buffer.append", audio:b64FromBuf(floatTo16BitPCM(down)) });
+  };
+}
+
+function endCall(){
+  if(ending) return; ending=true;
+  pendingEnd=false; endRequested=false;
+  clearSilenceTimer();
+  stopPlayback();
+  try{ processor&&(processor.onaudioprocess=null); }catch(_){}
+  try{ ws&&ws.close(); }catch(_){}
+  try{ micStream&&micStream.getTracks().forEach(t=>t.stop()); }catch(_){}
+  try{ captureCtx&&captureCtx.close(); }catch(_){}
+  try{ playCtx&&playCtx.close(); }catch(_){}
+  connected=false; micBtn.classList.remove("live"); micBtn.disabled=true;
+  micBtn.textContent="समाप्त"; setStatus("कॉल समाप्त। डेटा फ़ोल्डर में सहेज लिया गया। 🙏","");
+}
+
+micBtn.addEventListener("click",start);
+endBtn.addEventListener("click",endCall);
+</script>
+</body>
+</html>

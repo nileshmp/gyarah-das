@@ -40,9 +40,11 @@ const server = http.createServer(async (req, res) => {
 
   // Rupa Devi's reference knowledge — re-read each call so edits apply live.
   // Phone numbers (10+ digit runs) are redacted before the agent ever sees them.
-  if (req.method === "GET" && req.url === "/knowledge") {
+  // /knowledge = English; /knowledge-hi = Hindi (separate file, English untouched).
+  if (req.method === "GET" && (req.url === "/knowledge" || req.url === "/knowledge-hi")) {
+    const file = req.url === "/knowledge-hi" ? "knowledge-base.hi.md" : "knowledge-base.md";
     try {
-      const md = await readFile(join(process.cwd(), "knowledge-base.md"), "utf-8");
+      const md = await readFile(join(process.cwd(), file), "utf-8");
       const redacted = md.replace(/\d[\d\s-]{8,}\d/g, "(shared on request)");
       res.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
       return res.end(redacted);
@@ -74,7 +76,7 @@ const server = http.createServer(async (req, res) => {
     };
     if (route === "/")        return serveHtml("landing.html");
     if (route === "/english") return serveHtml("index.html");
-    if (route === "/hindi")   return serveHtml("hindi-soon.html");
+    if (route === "/hindi")   return serveHtml("hindi.html");
   }
 
   // Static files from /public

@@ -9,6 +9,14 @@ import { join } from "node:path";
 
 const SR = 24000; // PCM sample rate used by the Realtime API
 
+// The app supports ONLY English (Latin) and Hindi (Devanagari). The transcriber
+// sometimes hallucinates other scripts (Arabic/Urdu, Korean, Chinese, Cyrillic…)
+// on noise. Drop any transcript containing such a script so junk never reaches
+// the saved record. Devanagari (U+0900–U+097F) is intentionally left OUT of this
+// set so Hindi passes; the range is split around it. Mirrors the browser filter.
+const FOREIGN_SCRIPT = /[Ͱ-ࣿঀ-᳿　-鿿가-힯豈-﫿]/;
+const isCleanText = (s) => typeof s === "string" && s.trim() !== "" && !FOREIGN_SCRIPT.test(s);
+
 export function newRecording() {
   return {
     startedAt: Date.now(),
@@ -45,10 +53,11 @@ export function fromServer(rec, msg) {
       if (msg.delta) rec.rupa.push({ t: ms(rec), pcm: pcmFromB64(msg.delta) });
       break;
     case "response.output_audio_transcript.done":
-      if (msg.transcript) rec.transcript.push({ who: "Rupa Devi", text: msg.transcript, t: ms(rec) });
+      if (isCleanText(msg.transcript)) rec.transcript.push({ who: "Rupa Devi", text: msg.transcript, t: ms(rec) });
       break;
     case "conversation.item.input_audio_transcription.completed":
-      if (msg.transcript) rec.transcript.push({ who: "Mother", text: msg.transcript, t: ms(rec) });
+      // Only save English/Hindi; drop foreign-script noise hallucinations.
+      if (isCleanText(msg.transcript)) rec.transcript.push({ who: "Mother", text: msg.transcript, t: ms(rec) });
       break;
     case "response.function_call_arguments.done": {
       let a = {};
