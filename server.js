@@ -22,7 +22,9 @@ try {
 let INSTRUCTIONS = "";
 try {
   const inst = JSON.parse(await readFile(join(process.cwd(), "instructions_hi_v2.json"), "utf8"));
-  INSTRUCTIONS = inst.instructions || "";
+  const persona = inst.persona || "";
+  const flow    = inst.instructions || "";
+  INSTRUCTIONS  = persona && flow ? persona + "\n\n---\n\n" + flow : persona || flow;
 } catch { /* instructions file missing — client will show an error */ }
 
 const MODEL = process.env.REALTIME_MODEL || CFG.model || "gpt-realtime";

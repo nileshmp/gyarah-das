@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Gyarah Das — Rupa Devi (Realtime)</title>
+<title>ग्यारह दास — रूपा देवी</title>
 <style>
   :root {
     --bg:#faf7f2; --card:#fff; --accent:#b5651d; --accent-dark:#8c4a12;
@@ -64,39 +64,39 @@
 <body>
 <div class="app">
   <header>
-    <h1>Gyarah Das</h1>
-    <div class="sub">Voice companion for the first 1000 days &middot; with Rupa Devi</div>
+    <h1>ग्यारह दास</h1>
+    <div class="sub">पहले 1000 दिनों का आवाज़ साथी &middot; रूपा देवी के साथ</div>
   </header>
 
-  <div id="status" class="status">Tap the circle to begin</div>
-  <button id="mic" class="mic">Start</button>
+  <div id="status" class="status">शुरू करने के लिए बटन दबाएं</div>
+  <button id="mic" class="mic">शुरू करें</button>
 
   <div id="transcript" class="transcript"></div>
 
   <div class="card">
-    <h3>Beneficiary Profile</h3>
-    <div class="row"><span class="label">Name</span><span id="p-name" class="val empty">—</span></div>
-    <div class="row"><span class="label">Age</span><span id="p-age" class="val empty">—</span></div>
-    <div class="row"><span class="label">Mobile</span><span id="p-mobile" class="val empty">—</span></div>
-    <div class="row"><span class="label">Village</span><span id="p-village" class="val empty">—</span></div>
+    <h3>लाभार्थी प्रोफ़ाइल</h3>
+    <div class="row"><span class="label">नाम</span><span id="p-name" class="val empty">—</span></div>
+    <div class="row"><span class="label">उम्र</span><span id="p-age" class="val empty">—</span></div>
+    <div class="row"><span class="label">मोबाइल</span><span id="p-mobile" class="val empty">—</span></div>
+    <div class="row"><span class="label">गाँव</span><span id="p-village" class="val empty">—</span></div>
     <div id="net" class="net"></div>
   </div>
 
   <div class="card">
-    <h3>Captured Details</h3>
-    <div id="details"><div class="muted-empty">Details will appear here as the conversation goes on…</div></div>
+    <h3>दर्ज विवरण</h3>
+    <div id="details"><div class="muted-empty">बातचीत के दौरान विवरण यहाँ दिखाई देंगे…</div></div>
   </div>
 
   <div class="card" id="contacts-card" style="display:none">
-    <h3>Contacts Shared</h3>
+    <h3>साझा किए गए संपर्क</h3>
     <div id="contacts"></div>
   </div>
 
-  <div class="controls"><button id="endBtn" class="btn">End call</button></div>
+  <div class="controls"><button id="endBtn" class="btn">कॉल समाप्त करें</button></div>
 
   <div class="hint">
-    Use Google Chrome and allow the microphone. Headphones are recommended.<br>
-    Just speak naturally — Rupa Devi will know when you have finished.
+    गूगल क्रोम का उपयोग करें और माइक्रोफोन की अनुमति दें। हेडफोन का उपयोग उचित है।<br>
+    बस स्वाभाविक रूप से बोलें — रूपा देवी को पता चल जाएगा जब आप बोलना बंद कर देंगी।
   </div>
 </div>
 
@@ -232,7 +232,7 @@ function runTool(name,args){
     const dir=villageDir(args.village);
     if(dir){
       setProfile("village",dir.village);
-      $("net").textContent="✓ Local support mapped for "+dir.village+" (names available; numbers shared only on request).";
+      $("net").textContent="✓ "+dir.village+" के लिए स्थानीय सहायता मैप की गई (नाम उपलब्ध; नंबर केवल अनुरोध पर).";
       // Names + facilities only — NO phone numbers
       const s=dir.stakeholders;
       return { found:true, village:dir.village,
@@ -252,7 +252,7 @@ function runTool(name,args){
     if(s){ addContact(s.role, s.name, s.mobile); return { name:s.name, role:s.role, mobile:s.mobile }; }
     return { found:false };
   }
-  if(name==="end_call"){ setStatus("Closing the call…",""); setTimeout(endCall,4500); return { ok:true }; }
+  if(name==="end_call"){ setStatus("कॉल बंद हो रही है…",""); setTimeout(endCall,4500); return { ok:true }; }
   return { ok:false };
 }
 
@@ -261,19 +261,19 @@ function handleEvent(ev){
   switch(ev.type){
     case "response.output_audio.delta":
       if(ev.delta) enqueueAudio(ev.delta);
-      setStatus("Rupa Devi is speaking…","speaking"); break;
+      setStatus("रूपा देवी बोल रही हैं…","speaking"); break;
     case "response.output_audio_transcript.delta":
-      if(!agentBubble) agentBubble=bubble("Rupa Devi","agent interim");
+      if(!agentBubble) agentBubble=bubble("रूपा देवी","agent interim");
       setBubbleText(agentBubble,(agentBubble.querySelector(".txt").textContent||"")+ev.delta); break;
     case "response.output_audio_transcript.done":
       if(agentBubble){ agentBubble.classList.remove("interim"); agentBubble=null; } break;
 
     case "conversation.item.input_audio_transcription.completed":
-      if(ev.transcript && ev.transcript.trim()){ const b=bubble("You","user"); setBubbleText(b,ev.transcript.trim()); }
+      if(ev.transcript && ev.transcript.trim()){ const b=bubble("आप","user"); setBubbleText(b,ev.transcript.trim()); }
       break;
 
     case "input_audio_buffer.speech_started":
-      setStatus("Listening…","listening"); break;
+      setStatus("सुन रही हूँ…","listening"); break;
 
     case "response.done":
       if(ev.response?.status==="cancelled") stopPlayback(); break;
@@ -328,8 +328,8 @@ async function start(){
       }});
       send({ type:"response.create" });
       startMicStreaming();
-      connected=true; micBtn.disabled=false; micBtn.textContent="Live"; micBtn.classList.add("live");
-      setStatus("Connected — say Namaste!","listening");
+      connected=true; micBtn.disabled=false; micBtn.textContent="जारी है"; micBtn.classList.add("live");
+      setStatus("जुड़ गए — नमस्ते कहें!","listening");
     };
     ws.onmessage=(e)=>{ try{ handleEvent(JSON.parse(e.data)); }catch(_){} };
     ws.onerror =()=>{ if(!gotError) setStatus("Connection error — is the server running?","error"); };
@@ -337,7 +337,7 @@ async function start(){
       if(!ending && !gotError) setStatus("Connection closed before any reply — check the server terminal.","error"); };
   }catch(err){
     console.error(err); setStatus("Could not start: "+err.message,"error");
-    micBtn.disabled=false; micBtn.textContent="Start";
+    micBtn.disabled=false; micBtn.textContent="शुरू करें";
   }
 }
 
@@ -362,7 +362,7 @@ function endCall(){
   try{ captureCtx&&captureCtx.close(); }catch(_){}
   try{ playCtx&&playCtx.close(); }catch(_){}
   connected=false; micBtn.classList.remove("live"); micBtn.disabled=true;
-  micBtn.textContent="Ended"; setStatus("Call ended. Saved to the data folder. 🙏","");
+  micBtn.textContent="समाप्त"; setStatus("कॉल समाप्त हो गई। 🙏","");
 }
 
 micBtn.addEventListener("click",start);
