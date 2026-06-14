@@ -5,7 +5,7 @@
 export const SAFETY_NET = {
   anwa: {
     village: "Anwa",
-    aliases: ["अनवा", "अनवां", "अनवाँ", "आनवा", "आनवां", "आनवाँ", "अन्वा", "आन्वा", "anva", "anwaa"],
+    aliases: ["अनवा", "अनवां", "अनवाँ", "आनवा", "आनवां", "आनवाँ", "अन्वा", "आन्वा", "आनुवा", "anva", "anwaa"],
     stakeholders: {
       ASHA:      { role: "ASHA Worker",                  name: "Rinku Devi",         mobile: "7037470202" },
       AWW:       { role: "Anganwadi Worker",             name: "Manju Devi",         mobile: "7624809705" },
