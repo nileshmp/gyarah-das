@@ -1,0 +1,23 @@
+{
+  "model": "gpt-realtime",
+  "voice": "marin",
+  "vad": {
+    "threshold": 0.85,
+    "silence_duration_ms": 800,
+    "prefix_padding_ms": 200
+  },
+  "mic": {
+    "echoCancellation": true,
+    "noiseSuppression": true,
+    "autoGainControl": true
+  },
+  "turn_taking": {
+    "pause_ms": 3500,
+    "overall_ms": 30000
+  },
+  "transcription": {
+    "model": "whisper-1",
+    "language": "hi"
+  },
+  "playback_rate": 0.9
+}
